@@ -53,16 +53,18 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     }));
   }
 
-  // Job description file is required, so we add it by default.
   useEffect(() => {
-    const jobDescriptionDoc: Doc = {title: 'job-description.md', content: ''};
+    const jobDescriptionDoc: Doc = {title: 'job-description.md', content: 'Place holder content for job description.'};
+    
     new Promise((resolve) => {
       setTimeout(resolve, 3000); // Ensure some delay for loader.
-    }).then(() => {
-      fetchDocs();
-      setContextDocs({ 'job-description.md': 'Place holder content for job description.' });
+    })
+    .then(() => fetchDocs())
+    .then(() => {
+      setContextDocs({[jobDescriptionDoc.title]: jobDescriptionDoc.content});
       setActiveDoc(jobDescriptionDoc);
-    }).finally(() => {
+    })
+    .finally(() => {
       setIsLoading(false);
     });
   }, [])
