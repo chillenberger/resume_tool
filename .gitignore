@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# outputs / personal files
+public/jobs
+public/outputs
+public/templates
+public/experience.json
+public/resume_data.json
+public/skills.json
