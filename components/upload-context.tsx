@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react';
-import { scrapeUrl, updateDocs } from '../services/context-service';
+import { scrapeUrl, updateDoc } from '../services/context-service';
 import { getDocs } from '../utils/context';
 import { Dispatch, SetStateAction } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -9,20 +9,38 @@ import { Doc } from '../types';
 import Loader from './loader';
 
 export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: { setActiveDoc: Dispatch<SetStateAction<Doc | null>>, activeDoc: Doc | null, onComplete: () => void }) {
-  const [contextDocs, setContextDocs] = useState<Doc[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [contextDocsTest, setContextDocsTest] = useState<{[key: string]: string}>({});
 
   async function fetchFiles() {
     const content = await getDocs();
-    setContextDocs(content || []);
+    for ( const doc of content ) {
+      contextDocsTest[doc.title] = doc.content;
+    }
+    setContextDocsTest(contextDocsTest);
   }
 
   async function saveUpdatedFile() {
+    setIsLoading(true);
     if( !activeDoc ) return;
-    const formData = new FormData();
-    formData.append("doc", JSON.stringify(activeDoc));
-    await updateDocs(formData);
-    await fetchFiles();
+
+    for ( const [title, content] of Object.entries(contextDocsTest)) {
+      const formData = new FormData();
+      formData.append("doc", content);
+      formData.append("title", title);
+      await updateDoc(formData);
+    }
+    
+    setIsLoading(false);
+    onComplete();
+  }
+
+  function updateLocalDocContent(title: string) {
+    if( !activeDoc ) return;
+    setContextDocsTest(prev => ({
+      ...prev,
+      [title]: activeDoc.content
+    }));
   }
 
   // Job description file is required, so we add it by default.
@@ -31,7 +49,8 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     new Promise((resolve) => {
       setTimeout(resolve, 3000); // Ensure some delay for loader.
     }).then(() => {
-      setContextDocs([jobDescriptionDoc]);
+      fetchFiles();
+      setContextDocsTest({ 'job-description.md': '' });
       setActiveDoc(jobDescriptionDoc);
       setIsLoading(false);
     });
@@ -39,15 +58,20 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
 
   // Add a new doc to doc list. 
   const addDoc = () => {
-    const newDoc: Doc = { title: `context-${contextDocs.length + 1}.md`, content: '' };
-    setContextDocs([...contextDocs, newDoc]);
+    const newDoc: Doc = { title: `context-${Object.keys(contextDocsTest).length + 1}.md`, content: '' };
     setActiveDoc(newDoc);
+
+    contextDocsTest[newDoc.title] = '';
+    setContextDocsTest(contextDocsTest);
   }
 
   const scrapeNewUrl = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
+    
     const formData = new FormData(event.currentTarget);
+    event.currentTarget.reset();
+    
     await scrapeUrl(formData);
     await fetchFiles();
     setIsLoading(false);
@@ -64,22 +88,24 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     <div  className="flex flex-col justify-between h-full">
       <div>
         <div className="flex space-x-2 flex-col">
-          {contextDocs.map((doc, key) => (
-            <div className={"flex flex-row gap-2"} key={key}>
-              <button type="button" onClick={async () => {
-                await saveUpdatedFile();
-                setActiveDoc({ title: doc.title, content: doc.content });
+          {Object.keys(contextDocsTest).map((title, key) => (
+            <div key={key} className={"flex flex-row gap-2"}>
+              <button type="button" onClick={() => {
+                updateLocalDocContent(activeDoc?.title || '');
+                setActiveDoc({ title: title, content: contextDocsTest[title] });
               }} className="text-white active:bg-blue-50" disabled={isLoading}><FontAwesomeIcon icon={faFile} /></button>
-              <div className="truncate">{doc.title}</div>
+              <div className="font-bold">{title}</div>
             </div>
           ))}
           <form onSubmit={scrapeNewUrl}>
               <div className="flex flex-row gap-2 items-center">
                 <button type="button" onClick={addDoc} disabled={isLoading}><FontAwesomeIcon icon={faAdd} /></button>
-                <input type="url" name="context" placeholder="Add URL" />
-                <input type="hidden" name="title" value={`context-${contextDocs.length + 1}.md`} />
+                <input type="url" name="url" placeholder="Add URL" />
+                <input type="hidden" name="title" value={`context-${Object.keys(contextDocsTest).length + 1}.md`} />
               </div>
           </form>
+
+          
         </div>
       </div>
 

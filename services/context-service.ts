@@ -4,12 +4,11 @@ import Firecrawl from '@mendable/firecrawl-js';
 import { writeFileSync } from 'fs';
 import { getDocs } from '../utils/context';
 import path from 'path';
-import { Doc } from '../types';
 
 async function scrapeUrl(formData: FormData) {
     const API_KEY = process.env.FIRECRAWL_API_KEY;
 
-    const link = formData.get('context') as string;
+    const link = formData.get('url') as string;
     const title = formData.get('title') as string || `context-${Date.now()}.md`;
     if (!link) return;
 
@@ -33,17 +32,21 @@ async function scrapeUrl(formData: FormData) {
 
 }
 
-async function updateDocs(formData: FormData) {
-  const doc = formData.get('doc') as string;
-  const fileJson = JSON.parse(doc) as Doc;
+async function updateDoc(formData: FormData) {
+  const doc = formData.get('doc')?.toString();
+  const title = formData.get('title')?.toString();
 
-  const filePath = path.join(process.cwd(), 'public', 'jobs', `${fileJson.title}`);
+  if (!doc || !title) {
+    throw new Error('Required field "doc" is missing from formData');
+  }
+
+  const filePath = path.join(process.cwd(), 'public', 'jobs', `${title}`);
   try {
-    writeFileSync(filePath, fileJson.content, { flag: 'w' });
+    writeFileSync(filePath, doc, { flag: 'w' });
     console.log(`Successfully updated ${filePath}`);
   } catch (error) {
     console.error(`Error updating ${filePath}:`, error);
   }
 }
 
-export { scrapeUrl, getDocs, updateDocs};
+export { scrapeUrl, getDocs, updateDoc };
