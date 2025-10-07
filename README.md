@@ -6,7 +6,7 @@ This app helps job seekers quickly tailor resumes, cover letters, and any other 
 - in app editing of context files and generated files. 
 
 
-Web scraper: Firecrawl  https://www.firecrawl.dev. 
+Web scraper: Firecrawl  https://www.firecrawl.dev.
 Current LLM: OpenAI.
 
 ## Vision
@@ -16,7 +16,7 @@ Current LLM: OpenAI.
 - Simplify llm discussion area. Currently most LLM integrations output the discussion in a long scrolling box, making it hard to find anything in the past discussion. 
 
 ## Getting Started
-all relevant files: 
+Add / update all relevant files: 
 - firecrawl api key to .env / .env.local
 - openai api key to .env / .env.local
 - add resume template in html to public/templates
