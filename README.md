@@ -1,10 +1,28 @@
 
 ## Overview
-This app helps job seekers tailor resumes by converting job descriptions and relevant links about the company into markdown files to be used with LLMs to tailor resumes. This uses Firecrawl  https://www.firecrawl.dev. 
+This app helps job seekers quickly tailor resumes, cover letters, and any other files required for the job application process.  It does this in three ways: 
+- web scrape or copy paste context in the app. 
+- facilitates and manages llm discussion with context. 
+- in app editing of context files and generated files. 
 
-This outputs markdown files into public/jobs folder.
+
+Web scraper: Firecrawl  https://www.firecrawl.dev. 
+Current LLM: OpenAI.
+
+## Vision
+- Generalize this method for all writing. This can very easily work for any topic. 
+- Develop enhanced methods of managing llm context in text creation.
+- Parallel code editor level control over docs.
+- Simplify llm discussion area. Currently most LLM integrations output the discussion in a long scrolling box, making it hard to find anything in the past discussion. 
 
 ## Getting Started
+all relevant files: 
+- firecrawl api key to .env / .env.local
+- openai api key to .env / .env.local
+- add resume template in html to public/templates
+- add cover letter template in html to public/templates
+- add resume_data.json to public 
+
 
 First, run the development server:
 
