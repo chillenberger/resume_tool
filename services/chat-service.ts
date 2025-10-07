@@ -13,7 +13,7 @@ export type ChatConversationResponse = {
   error: boolean;
 };
 
-async function generateResume(): Promise<ChatConversationResponse> {
+async function generateResume(userRequest: string): Promise<ChatConversationResponse> {
   const resumeDataPath = path.join(process.cwd(), 'public', 'resume_data.json');
   const resumeTemplatePath = path.join(process.cwd(), 'public', 'templates', 'resume_template.html');
   const coverletterTemplatePath = path.join(process.cwd(), 'public', 'templates', 'coverletter_template.html');
@@ -37,7 +37,7 @@ async function generateResume(): Promise<ChatConversationResponse> {
 
   // contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})})
 
-  // const resp = await askChat("Please create a resume with the provided data", null, file);
+  // const resp = await askChat(userRequest, null, file);
   // const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
 
   // return {

@@ -5,20 +5,12 @@ import { conversationSchema, Conversation, Doc } from "../types";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// const SYSTEM_PROMPT = `
-// You are a professional career coach that helps me tailor my resume to a provided job description using my provided resume json data.
-
-// I will sometimes include extra information about the company. 
-
-// Once we have discussed how we are going to tailor the resume you will provide a downloadable html file in the styling of the provided resume-html-template.html.
-
-// Sometimes I will also ask you to write a cover letter. 
-// `
-
 const SYSTEM_PROMPT = `
 You are a professional career coach that helps me tailor my resume to a provided job description using my provided resume json data.
 
 I will sometimes include extra information about the company, like their mission statement or values.
+
+Your responses are clear and direct.
 
 We will use the following schema for our conversations:
 ${conversationSchema}

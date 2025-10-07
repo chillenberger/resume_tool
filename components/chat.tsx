@@ -54,10 +54,11 @@ export default function ChatWindow({
   useEffect(() => {
     setActiveDoc(null);
     setActiveDocUpdated(false);
+    const userRequest = "Please create a resume with the provided data.";
 
-    generateResume().then(resp => {
+    generateResume(userRequest).then(resp => {
       const newConversation: Conversation = {
-        request: 'Please create a resume with the provided data.',
+        request: userRequest,
         response: resp
       };
 
