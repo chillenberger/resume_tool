@@ -7,10 +7,13 @@ import { Doc } from '../types';
 import Loader from './loader';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFileExport } from '@fortawesome/free-solid-svg-icons';
-import { faFile } from '@fortawesome/free-solid-svg-icons';
-import { faRobot } from '@fortawesome/free-solid-svg-icons';
-import { faUser } from '@fortawesome/free-solid-svg-icons';
+import { 
+  faUser, 
+  faPaperPlane, 
+  faRobot, 
+  faFile, 
+  faFileExport 
+} from '@fortawesome/free-solid-svg-icons';
 
 interface ChatWindowProps {
   setActiveDoc: Dispatch<SetStateAction<Doc | null>>, 
@@ -146,14 +149,13 @@ export default function ChatWindow({
             <button onClick={() => exportFile(title)} disabled={isLoading}><FontAwesomeIcon icon={faFileExport} /></button>
           </div>
         ))}
-        <form onSubmit={onChatSubmit} className="flex flex-row gap-3 bg-white rounded-lg p-2">
-          {!isLoading && previousResponseId && <>
-            <input type="text" name="userQuery" className="text-gray-500 w-full"/>
+        <form onSubmit={onChatSubmit} className=" bg-white rounded-lg p-2 relative">
+          {previousResponseId ? <>
+            <textarea name="userQuery" className="w-full" placeholder="Discuss with ChatGPT"></textarea>
             <input type="hidden" name="previousResponseId" value={previousResponseId}/>
-            <button type="submit" className="bg-gray-800 text-white py-2 px-4 rounded" disabled={isLoading}>Send</button>
-          </>
+            <div className="absolute top-1 right-1"><button type="submit" className="hover:cursor-pointer" disabled={isLoading}>{isLoading ? <Loader withText={false}/> : <FontAwesomeIcon icon={faPaperPlane} className="text-gray-800"/>}</button></div>
+          </> : <Loader />
           }
-          {isLoading && <div className="flex justify-center items-center w-full"><Loader /></div>}
         </form>
 
         <div className="flex flex-row gap-2 justify-center items-center">

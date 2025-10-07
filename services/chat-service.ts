@@ -35,19 +35,19 @@ async function generateResume(userRequest: string): Promise<ChatConversationResp
     content: coverletterTemplate
   }]
 
-  // contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})})
+  contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})})
 
-  // const resp = await askChat(userRequest, null, file);
-  // const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
+  const resp = await askChat(userRequest, null, file);
+  const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
 
-  // return {
-  //   response: conversationData,
-  //   lastResponseId: resp?.id,
-  //   error: false,
-  // }
+  return {
+    response: conversationData,
+    lastResponseId: resp?.id,
+    error: false,
+  }
 
-  await new Promise(resolve => setTimeout(resolve, 4000));
-  return testResponse;
+  // await new Promise(resolve => setTimeout(resolve, 4000));
+  // return testResponse;
 }
 
 async function chat(formData: FormData): Promise<ChatConversationResponse> {
@@ -56,18 +56,18 @@ async function chat(formData: FormData): Promise<ChatConversationResponse> {
   const doc = formData.get('doc') as string | null;
   const docJson: Doc | undefined = doc ? JSON.parse(doc) as Doc : undefined;
 
-  // const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
+  const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
 
-  // const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
+  const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
 
-  // return {
-  //   response: conversationData,
-  //   lastResponseId: resp?.id,
-  //   error: false,
-  // }
+  return {
+    response: conversationData,
+    lastResponseId: resp?.id,
+    error: false,
+  }
 
-  await new Promise(resolve => setTimeout(resolve, 4000));
-  return testResponse;
+  // await new Promise(resolve => setTimeout(resolve, 4000));
+  // return testResponse;
 }
 
 async function htmlToPdf(formData: FormData) {
