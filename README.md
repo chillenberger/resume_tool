@@ -36,6 +36,8 @@ pnpm dev
 bun dev
 ```
 
+For html -> pdf converter you need html2pdf https://crates.io/crates/html2pdf
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
