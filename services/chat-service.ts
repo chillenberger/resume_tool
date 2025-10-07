@@ -35,16 +35,19 @@ async function generateResume(): Promise<ChatConversationResponse> {
     content: coverletterTemplate
   }]
 
-  contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})})
+  // contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})})
 
-  const resp = await askChat("Please create a resume with the provided data", null, file);
-  const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
+  // const resp = await askChat("Please create a resume with the provided data", null, file);
+  // const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
 
-  return {
-    response: conversationData,
-    lastResponseId: resp?.id,
-    error: false,
-  }
+  // return {
+  //   response: conversationData,
+  //   lastResponseId: resp?.id,
+  //   error: false,
+  // }
+
+  await new Promise(resolve => setTimeout(resolve, 4000));
+  return testResponse;
 }
 
 async function chat(formData: FormData): Promise<ChatConversationResponse> {
@@ -53,15 +56,18 @@ async function chat(formData: FormData): Promise<ChatConversationResponse> {
   const doc = formData.get('doc') as string | null;
   const docJson: Doc | undefined = doc ? JSON.parse(doc) as Doc : undefined;
 
-  const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
+  // const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
 
-  const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
+  // const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
 
-  return {
-    response: conversationData,
-    lastResponseId: resp?.id,
-    error: false,
-  }
+  // return {
+  //   response: conversationData,
+  //   lastResponseId: resp?.id,
+  //   error: false,
+  // }
+
+  await new Promise(resolve => setTimeout(resolve, 4000));
+  return testResponse;
 }
 
 async function htmlToPdf(formData: FormData) {
@@ -99,3 +105,21 @@ async function htmlToPdf(formData: FormData) {
 }
 
 export { generateResume, chat, htmlToPdf };
+
+const testResponse = {
+  response: {
+    message: "This is a test response",
+    files: [
+      {
+        title: "resume.html",
+        content: "<html><body><h1>Test Resume</h1></body></html>"
+      },
+      {
+        title: "coverletter.html",
+        content: "<html><body><h1>Test Cover Letter</h1></body></html>"
+      }
+    ]
+  },
+  lastResponseId: "test-response-id",
+  error: false
+}

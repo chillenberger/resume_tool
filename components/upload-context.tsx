@@ -10,34 +10,44 @@ import Loader from './loader';
 
 export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: { setActiveDoc: Dispatch<SetStateAction<Doc | null>>, activeDoc: Doc | null, onComplete: () => void }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [contextDocsTest, setContextDocsTest] = useState<{[key: string]: string}>({});
+  const [contextDocs, setContextDocs] = useState<{[key: string]: string}>({});
 
-  async function fetchFiles() {
+  async function fetchDocs() {
     const content = await getDocs();
     for ( const doc of content ) {
-      contextDocsTest[doc.title] = doc.content;
+      contextDocs[doc.title] = doc.content;
     }
-    setContextDocsTest(contextDocsTest);
+    setContextDocs(contextDocs);
   }
 
-  async function saveUpdatedFile() {
+  async function saveUpdatedFiles() {
     setIsLoading(true);
-    if( !activeDoc ) return;
 
-    for ( const [title, content] of Object.entries(contextDocsTest)) {
-      const formData = new FormData();
-      formData.append("doc", content);
-      formData.append("title", title);
-      await updateDoc(formData);
+    // save current doc state
+    if ( activeDoc ) {
+      contextDocs[activeDoc.title] = activeDoc.content;
+    }
+
+    // update docs on server. 
+    try {
+      for ( const [title, content] of Object.entries(contextDocs)) {
+        const formData = new FormData();
+        formData.append("doc", content);
+        formData.append("title", title);
+        await updateDoc(formData);
+      }
+      onComplete();
+    } catch (error) {
+      console.error("Error saving documents: ", error);
+    } finally {
+      setIsLoading(false);
     }
     
-    setIsLoading(false);
-    onComplete();
   }
 
   function updateLocalDocContent(title: string) {
     if( !activeDoc ) return;
-    setContextDocsTest(prev => ({
+    setContextDocs(prev => ({
       ...prev,
       [title]: activeDoc.content
     }));
@@ -49,50 +59,45 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     new Promise((resolve) => {
       setTimeout(resolve, 3000); // Ensure some delay for loader.
     }).then(() => {
-      fetchFiles();
-      setContextDocsTest({ 'job-description.md': '' });
+      fetchDocs();
+      setContextDocs({ 'job-description.md': 'Place holder content for job description.' });
       setActiveDoc(jobDescriptionDoc);
+    }).finally(() => {
       setIsLoading(false);
     });
   }, [])
 
-  // Add a new doc to doc list. 
+  // Manually add a new doc to doc list. 
   const addDoc = () => {
-    const newDoc: Doc = { title: `context-${Object.keys(contextDocsTest).length + 1}.md`, content: '' };
+    const newDoc: Doc = { title: `context-${Object.keys(contextDocs).length + 1}.md`, content: '' };
     setActiveDoc(newDoc);
 
-    contextDocsTest[newDoc.title] = '';
-    setContextDocsTest(contextDocsTest);
+    contextDocs[newDoc.title] = '';
+    setContextDocs(contextDocs);
   }
 
+  // Add new doc by scraping a URL
   const scrapeNewUrl = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     
     const formData = new FormData(event.currentTarget);
     event.currentTarget.reset();
-    
-    await scrapeUrl(formData);
-    await fetchFiles();
-    setIsLoading(false);
-  }
 
-  const generateResume = async () => {
-    setIsLoading(true);
-    await saveUpdatedFile();
+    await scrapeUrl(formData);
+    await fetchDocs();
     setIsLoading(false);
-    onComplete();
   }
 
   return (
     <div  className="flex flex-col justify-between h-full">
       <div>
         <div className="flex space-x-2 flex-col">
-          {Object.keys(contextDocsTest).map((title, key) => (
+          {Object.keys(contextDocs).map((title, key) => (
             <div key={key} className={"flex flex-row gap-2"}>
               <button type="button" onClick={() => {
                 updateLocalDocContent(activeDoc?.title || '');
-                setActiveDoc({ title: title, content: contextDocsTest[title] });
+                setActiveDoc({ title: title, content: contextDocs[title] });
               }} className="text-white active:bg-blue-50" disabled={isLoading}><FontAwesomeIcon icon={faFile} /></button>
               <div className="font-bold">{title}</div>
             </div>
@@ -101,7 +106,7 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
               <div className="flex flex-row gap-2 items-center">
                 <button type="button" onClick={addDoc} disabled={isLoading}><FontAwesomeIcon icon={faAdd} /></button>
                 <input type="url" name="url" placeholder="Add URL" />
-                <input type="hidden" name="title" value={`context-${Object.keys(contextDocsTest).length + 1}.md`} />
+                <input type="hidden" name="title" value={`context-${Object.keys(contextDocs).length + 1}.md`} />
               </div>
           </form>
 
@@ -110,7 +115,7 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
       </div>
 
       <button className="flex flex-col gap-4 bg-blue-400 rounded-md border-neutral-50 p-2 mt-4 hover:cursor-pointer"
-        onClick={generateResume} disabled={isLoading}>{isLoading ? <Loader /> : 'Generate Resume'}</button>
+        onClick={saveUpdatedFiles} disabled={isLoading}>{isLoading ? <Loader /> : 'Generate Resume'}</button>
     </div>
   )
 }
