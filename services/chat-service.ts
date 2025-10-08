@@ -9,7 +9,7 @@ import { getDocs } from '../utils/context';
 
 export type ChatConversationResponse = {
   response: Conversation | null | undefined;
-  lastResponseId: string | null | undefined;
+  lastResponseId: string;
   error: boolean;
 };
 
@@ -35,19 +35,19 @@ async function generateResume(userRequest: string): Promise<ChatConversationResp
     content: coverletterTemplate
   }]
 
-  contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})})
+  // contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})})
 
-  const resp = await askChat(userRequest, null, file);
-  const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
+  // const resp = await askChat(userRequest, null, file);
+  // const conversationData: Conversation = JSON.parse(resp?.output_text || '{}');
 
-  return {
-    response: conversationData,
-    lastResponseId: resp?.id,
-    error: false,
-  }
+  // return {
+  //   response: conversationData,
+  //   lastResponseId: resp?.id,
+  //   error: false,
+  // }
 
-  // await new Promise(resolve => setTimeout(resolve, 4000));
-  // return testResponse;
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  return testResponse;
 }
 
 async function chat(formData: FormData): Promise<ChatConversationResponse> {
@@ -58,7 +58,7 @@ async function chat(formData: FormData): Promise<ChatConversationResponse> {
 
   const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
 
-  const conversationData: Conversation | undefined = JSON.parse(resp?.output_text || '{}');
+  const conversationData: Conversation = JSON.parse(resp?.output_text || '{}');
 
   return {
     response: conversationData,
@@ -73,9 +73,6 @@ async function chat(formData: FormData): Promise<ChatConversationResponse> {
 async function htmlToPdf(formData: FormData) {
   const doc = formData.get('doc') as string;
   let docName = formData.get('docName') as string || `document`;
-
-  console.log("htmlToPdf called with docName: ", docName);
-  console.log("file: ", doc);
 
   if ( !doc || !docName ) {
     console.error('No HTML content provided');

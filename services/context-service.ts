@@ -5,39 +5,29 @@ import { writeFileSync } from 'fs';
 import { getDocs } from '../utils/context';
 import path from 'path';
 
-async function scrapeUrl(formData: FormData) {
+async function scrapeUrl(url: string) {
     const API_KEY = process.env.FIRECRAWL_API_KEY;
-
-    const link = formData.get('url') as string;
-    const title = formData.get('title') as string || `context-${Date.now()}.md`;
-    if (!link) return;
-
+    if (!url) return;
+    
     const firecrawl = new Firecrawl({
         apiKey: API_KEY || '',
     });
 
-    const scrapeResponse = await firecrawl.scrape(link, {
+    const scrapeResponse = await firecrawl.scrape(url, {
         formats: ['markdown', 'html'],
     });
 
-    if (scrapeResponse.markdown) {
-        const filePath = path.join(process.cwd(), 'public', 'jobs', title);
-        try {
-            writeFileSync(filePath, scrapeResponse.markdown, { flag: 'w' });
-            console.log(`Successfully saved ${title}`);
-        } catch (error) {
-            console.error(`Error saving ${title}:`, error);
-        }
-    }
-
+    return scrapeResponse;
 }
 
 async function updateDoc(formData: FormData) {
   const doc = formData.get('doc')?.toString();
   const title = formData.get('title')?.toString();
 
-  if (!doc || !title) {
+  if ( doc === null || doc === undefined ) {
     throw new Error('Required field "doc" is missing from formData');
+  } else if (!title) {
+    throw new Error('Required field "title" is missing from formData');
   }
 
   const filePath = path.join(process.cwd(), 'public', 'jobs', `${title}`);

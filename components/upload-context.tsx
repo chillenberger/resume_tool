@@ -1,123 +1,95 @@
 'use client'
-import { useState, useEffect } from 'react';
-import { scrapeUrl, updateDoc } from '../services/context-service';
-import { getDocs } from '../utils/context';
+import { useEffect } from 'react';
 import { Dispatch, SetStateAction } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFile, faAdd } from '@fortawesome/free-solid-svg-icons';
 import { Doc } from '../types';
 import Loader from './loader';
+import useContextDocs from '../hooks/context-hook';
+import useUrlScraper from '../hooks/scraper-hook';
 
 export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: { setActiveDoc: Dispatch<SetStateAction<Doc | null>>, activeDoc: Doc | null, onComplete: () => void }) {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [contextDocs, setContextDocs] = useState<{[key: string]: string}>({});
+  const { contextDocs, setContextDocs, isLoading: docsLoading, fetchDocs, createDoc, error: contextError } = useContextDocs();
+  const { urlToDoc, isLoading: scrapeLoading, error: scrapeError } = useUrlScraper();
 
-  async function fetchDocs() {
-    const content = await getDocs();
-    for ( const doc of content ) {
-      contextDocs[doc.title] = doc.content;
-    }
-    setContextDocs(contextDocs);
+  const isLoading = docsLoading || scrapeLoading;
+
+  function saveActiveDoc() {
+    setContextDocs(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
   }
 
-  async function saveUpdatedFiles() {
-    setIsLoading(true);
-
-    // save current doc state
-    if ( activeDoc ) {
-      contextDocs[activeDoc.title] = activeDoc.content;
-    }
-
-    // update docs on server. 
-    try {
-      for ( const [title, content] of Object.entries(contextDocs)) {
-        const formData = new FormData();
-        formData.append("doc", content);
-        formData.append("title", title);
-        await updateDoc(formData);
-      }
-      onComplete();
-    } catch (error) {
-      console.error("Error saving documents: ", error);
-    } finally {
-      setIsLoading(false);
-    }
-    
-  }
-
-  function updateLocalDocContent(title: string) {
+  function onDocChange(title: string) {
     if( !activeDoc ) return;
-    setContextDocs(prev => ({
-      ...prev,
-      [title]: activeDoc.content
-    }));
+    saveActiveDoc(); // Save current active doc before switching
+    setActiveDoc({ title, content: contextDocs[title] });// Switch to new doc
   }
 
   useEffect(() => {
     const jobDescriptionDoc: Doc = {title: 'job-description.md', content: 'Place holder content for job description.'};
-    
+
     new Promise((resolve) => {
-      setTimeout(resolve, 3000); // Ensure some delay for loader.
+      // Ensure some delay so people see awesome loader.
+      setTimeout(resolve, 3000);
     })
-    .then(() => fetchDocs())
+    .then(fetchDocs)
+    // Overwrite job description doc to new empty job description. 
     .then(() => {
-      setContextDocs({[jobDescriptionDoc.title]: jobDescriptionDoc.content});
+      createDoc(jobDescriptionDoc);
       setActiveDoc(jobDescriptionDoc);
-    })
-    .finally(() => {
-      setIsLoading(false);
     });
-  }, [])
+  }, []) // Empty dependency array = runs once on mount
 
-  // Manually add a new doc to doc list. 
-  const addDoc = () => {
-    const newDoc: Doc = { title: `context-${Object.keys(contextDocs).length + 1}.md`, content: '' };
-    setActiveDoc(newDoc);
-
-    contextDocs[newDoc.title] = '';
-    setContextDocs(contextDocs);
-  }
-
-  // Add new doc by scraping a URL
-  const scrapeNewUrl = async (event: React.FormEvent<HTMLFormElement>) => {
+  function handleScrapeUrl(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsLoading(true);
-    
     const formData = new FormData(event.currentTarget);
     event.currentTarget.reset();
-
-    await scrapeUrl(formData);
-    await fetchDocs();
-    setIsLoading(false);
+    urlToDoc(formData).then( (doc: Doc | undefined) => {
+      if ( doc ) {
+        createDoc(doc);
+        setActiveDoc(doc);
+      }
+    });
   }
 
-  return (
+  function handleCreateDoc() {
+    const newDoc: Doc = {
+      title: `context-${Object.keys(contextDocs).length + 1}.md`,
+      content: ''
+    };
+    createDoc(newDoc);
+    setActiveDoc(newDoc);
+  }
+
+  function handleComplete() {
+    saveActiveDoc();
+    onComplete();
+  }
+
+ return (
     <div  className="flex flex-col justify-between h-full">
       <div>
         <div className="flex space-x-2 flex-col">
           {Object.keys(contextDocs).map((title, key) => (
-            <div key={key} className={"flex flex-row gap-2"}>
-              <button type="button" onClick={() => {
-                updateLocalDocContent(activeDoc?.title || '');
-                setActiveDoc({ title: title, content: contextDocs[title] });
-              }} className="text-white active:bg-blue-50" disabled={isLoading}><FontAwesomeIcon icon={faFile} /></button>
+            <div key={key} className={`flex flex-row gap-2 rounded-sm ${activeDoc?.title === title ? 'bg-gray-800' : ''}`}>
+              <button type="button" aria-label={`Edit ${title}`} onClick={() => {
+                onDocChange(title);
+              }} className="text-white hover:cursor-pointer" disabled={isLoading || activeDoc?.title === title}><FontAwesomeIcon icon={faFile} /></button>
               <div className="font-bold">{title}</div>
             </div>
           ))}
-          <form onSubmit={scrapeNewUrl}>
+          <form onSubmit={handleScrapeUrl}>
               <div className="flex flex-row gap-2 items-center">
-                <button type="button" onClick={addDoc} disabled={isLoading}><FontAwesomeIcon icon={faAdd} /></button>
+                <button type="button" onClick={handleCreateDoc} disabled={isLoading} aria-label="Add Document"><FontAwesomeIcon icon={faAdd} /></button>
                 <input type="url" name="url" placeholder="Add URL" />
                 <input type="hidden" name="title" value={`context-${Object.keys(contextDocs).length + 1}.md`} />
               </div>
           </form>
-
-          
         </div>
       </div>
 
+      <div className="text-red-500">{contextError || scrapeError}</div>
       <button className="flex flex-col gap-4 bg-blue-400 rounded-md border-neutral-50 p-2 mt-4 hover:cursor-pointer"
-        onClick={saveUpdatedFiles} disabled={isLoading}>{isLoading ? <Loader /> : 'Generate Resume'}</button>
+        onClick={handleComplete} disabled={isLoading}>{isLoading ? <Loader /> : 'Generate Resume'}</button>
     </div>
   )
 }

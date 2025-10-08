@@ -86,23 +86,18 @@ export default function ChatWindow({
 
   async function onChatSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsLoading(true);
+
     const formData = new FormData(event.currentTarget);
     const userRequest = formData.get('userQuery') as string;
-    setIsLoading(true);
     
-    try {
-      if( activeDocUpdated && Object.keys(docs).length > 0 && activeDoc ) {
-        formData.append('doc', JSON.stringify(activeDoc));
-      } 
-      const request: ChatConversationResponse = {
-        response: { message: userRequest, files: [] },
-        lastResponseId: previousResponseId,
-        error: false
-      }
+    if( activeDocUpdated && Object.keys(docs).length > 0 && activeDoc ) {
+      formData.append('doc', JSON.stringify(activeDoc));
+    } 
 
-      const resp: ChatConversationResponse = await chat(formData);
-
-      setPreviousResponseId(resp.lastResponseId || null);
+    chat(formData)
+    .then((resp: ChatConversationResponse) => {
+      setPreviousResponseId(resp.lastResponseId);
       const newConversation: Conversation = {
         request: userRequest,
         response: resp
@@ -110,7 +105,7 @@ export default function ChatWindow({
       setConversation([...conversation, newConversation]);
       setConversationIndex(conversation.length); // +1 for new entry but -1 for 0 index.
 
-      // extract returned files
+      // Extract returned files
       if(resp?.response?.files) {
         const newDocs: {[key: string]: string} = {};
         Object.keys(docs).forEach(k => { newDocs[k] = docs[k]; });
@@ -118,6 +113,7 @@ export default function ChatWindow({
           newDocs[f.title] = f.content;
         })
 
+        // Update viewed doc to first returned doc.
         setDocs(newDocs);
         if ( resp?.response?.files[0] ) {
           setActiveDoc(resp?.response?.files[0] || null);
@@ -128,27 +124,31 @@ export default function ChatWindow({
         }
         setActiveDocUpdated(false);
       }
-    } catch (error) {
+    })
+    .catch(error => {
       console.error("Error in chat submission:", error);
-    } finally {
+    })
+    .finally(() => {
       setIsLoading(false);
-    }
+    });
   }
 
   return (
       <div className="flex flex-col gap-3 p-3 w-max-[50rem] h-full">
-        {Object.keys(docs).length > 0 && 
-        Object.entries(docs).map(([title, content], key) => (
-          <div key={key} className="flex flex-row gap-1">
-            <button className="truncate" onClick={() => {
-              if ( activeDoc ) {
-                docs[activeDoc.title] = activeDoc?.content || content;
-              }
-              setActiveDoc({ title, content });
-              }} disabled={isLoading}><FontAwesomeIcon icon={faFile}/> {title}</button>
-            <button onClick={() => exportFile(title)} disabled={isLoading}><FontAwesomeIcon icon={faFileExport} /></button>
-          </div>
-        ))}
+        <div className="flex flex-col gap-1 mb-6">
+          {Object.keys(docs).length > 0 && 
+          Object.entries(docs).map(([title, content], key) => (
+            <div key={key} className="flex flex-row gap-1">
+              <button className="truncate" onClick={() => {
+                if ( activeDoc ) {
+                  docs[activeDoc.title] = activeDoc?.content || content;
+                }
+                setActiveDoc({ title, content });
+                }} disabled={isLoading}><FontAwesomeIcon icon={faFile}/> {title}</button>
+              <button onClick={() => exportFile(title)} disabled={isLoading}><FontAwesomeIcon icon={faFileExport} /></button>
+            </div>
+          ))}
+        </div>
         <form onSubmit={onChatSubmit} className=" bg-white rounded-lg p-2 relative">
           {previousResponseId ? <>
             <textarea name="userQuery" className="w-full" placeholder="Discuss with ChatGPT"></textarea>
