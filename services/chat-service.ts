@@ -2,10 +2,9 @@
 
 import path from 'path';
 import { Conversation, Doc } from '../types';
-import exec from 'child_process';
 import fs from 'fs';
 import {askChat} from '../lib/openai';
-import { getDocs } from '../utils/context';
+import { getFiles } from './file-service';
 
 export type ChatConversationResponse = {
   response: Conversation | null | undefined;
@@ -22,7 +21,7 @@ async function generateResume(userRequest: string): Promise<ChatConversationResp
   const resumeTemplate = fs.readFileSync(resumeTemplatePath, 'utf-8');
   const coverletterTemplate = fs.readFileSync(coverletterTemplatePath, 'utf-8');
 
-  const contextDocs = await getDocs();
+  const contextDocs = await getFiles('jobs');
 
   const file  = [{
     title: "resume_data.json",
@@ -35,19 +34,20 @@ async function generateResume(userRequest: string): Promise<ChatConversationResp
     content: coverletterTemplate
   }]
 
-  // contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})})
 
-  // const resp = await askChat(userRequest, null, file);
-  // const conversationData: Conversation = JSON.parse(resp?.output_text || '{}');
+  contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})});
 
-  // return {
-  //   response: conversationData,
-  //   lastResponseId: resp?.id,
-  //   error: false,
-  // }
+  const resp = await askChat(userRequest, null, file);
+  const conversationData: Conversation = JSON.parse(resp?.output_text || '{}');
 
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  return testResponse;
+  return {
+    response: conversationData,
+    lastResponseId: resp?.id,
+    error: false,
+  }
+
+  // await new Promise(resolve => setTimeout(resolve, 2000));
+  // return testResponse;
 }
 
 async function chat(formData: FormData): Promise<ChatConversationResponse> {
@@ -70,38 +70,7 @@ async function chat(formData: FormData): Promise<ChatConversationResponse> {
   // return testResponse;
 }
 
-async function htmlToPdf(formData: FormData) {
-  const doc = formData.get('doc') as string;
-  let docName = formData.get('docName') as string || `document`;
-
-  if ( !doc || !docName ) {
-    console.error('No HTML content provided');
-    return;
-  }
-
-  docName = docName.split('.')[0];
-
-  const timeStamp = Date.now();
-  const outputFilePath = path.join(process.cwd(), 'public', 'outputs', `${docName}_${timeStamp}.pdf`);
-  const tempFilePath = path.join(process.cwd(), 'public', 'temp', `${docName}_${timeStamp}.html`);
-
-  fs.writeFileSync(tempFilePath, doc);
-
-  const command = `html2pdf ${tempFilePath} --background --output ${outputFilePath}`;
-
-  exec.exec(command, (error, stdout, stderr) => {
-
-    fs.unlinkSync(tempFilePath);
-    if (error) {
-      console.error(`Error executing command: ${error}`);
-      return;
-    }
-    console.log(`Command output: ${stdout}`);
-  });
-
-}
-
-export { generateResume, chat, htmlToPdf };
+export { generateResume, chat };
 
 const testResponse = {
   response: {

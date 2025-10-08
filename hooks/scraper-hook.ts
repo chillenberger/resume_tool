@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react';
-import { scrapeUrl } from '../services/context-service';
+import scrapeUrl from '../services/scraper-service';
 import { Doc } from '../types';
 
 export default function useUrlScraper() {

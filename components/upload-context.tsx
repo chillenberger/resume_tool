@@ -5,23 +5,23 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFile, faAdd } from '@fortawesome/free-solid-svg-icons';
 import { Doc } from '../types';
 import Loader from './loader';
-import useContextDocs from '../hooks/context-hook';
+import { useManageFiles } from '../hooks/file-manager-hook';
 import useUrlScraper from '../hooks/scraper-hook';
 
 export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: { setActiveDoc: Dispatch<SetStateAction<Doc | null>>, activeDoc: Doc | null, onComplete: () => void }) {
-  const { contextDocs, setContextDocs, isLoading: docsLoading, fetchDocs, createDoc, error: contextError } = useContextDocs();
+  const { files, setFiles, isLoading: docsLoading, fetchDocs, createDoc, error: contextError, syncFilesWithServer } = useManageFiles('jobs');
   const { urlToDoc, isLoading: scrapeLoading, error: scrapeError } = useUrlScraper();
 
   const isLoading = docsLoading || scrapeLoading;
 
   function saveActiveDoc() {
-    setContextDocs(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
+    setFiles(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
   }
 
-  function onDocChange(title: string) {
+  function handleFileChange(title: string) {
     if( !activeDoc ) return;
-    saveActiveDoc(); // Save current active doc before switching
-    setActiveDoc({ title, content: contextDocs[title] });// Switch to new doc
+    saveActiveDoc();
+    setActiveDoc({ title, content: files[title] });
   }
 
   useEffect(() => {
@@ -45,6 +45,7 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     event.currentTarget.reset();
     urlToDoc(formData).then( (doc: Doc | undefined) => {
       if ( doc ) {
+        saveActiveDoc();
         createDoc(doc);
         setActiveDoc(doc);
       }
@@ -53,15 +54,16 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
 
   function handleCreateDoc() {
     const newDoc: Doc = {
-      title: `context-${Object.keys(contextDocs).length + 1}.md`,
+      title: `context-${Object.keys(files).length + 1}.md`,
       content: ''
     };
+    saveActiveDoc();
     createDoc(newDoc);
     setActiveDoc(newDoc);
   }
 
-  function handleComplete() {
-    saveActiveDoc();
+  async function handleComplete() {
+    await syncFilesWithServer(activeDoc ? { [activeDoc.title]: activeDoc.content } : undefined);
     onComplete();
   }
 
@@ -69,10 +71,10 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     <div  className="flex flex-col justify-between h-full">
       <div>
         <div className="flex space-x-2 flex-col">
-          {Object.keys(contextDocs).map((title, key) => (
+          {Object.keys(files).map((title, key) => (
             <div key={key} className={`flex flex-row gap-2 rounded-sm ${activeDoc?.title === title ? 'bg-gray-800' : ''}`}>
               <button type="button" aria-label={`Edit ${title}`} onClick={() => {
-                onDocChange(title);
+                handleFileChange(title);
               }} className="text-white hover:cursor-pointer" disabled={isLoading || activeDoc?.title === title}><FontAwesomeIcon icon={faFile} /></button>
               <div className="font-bold">{title}</div>
             </div>
@@ -81,7 +83,7 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
               <div className="flex flex-row gap-2 items-center">
                 <button type="button" onClick={handleCreateDoc} disabled={isLoading} aria-label="Add Document"><FontAwesomeIcon icon={faAdd} /></button>
                 <input type="url" name="url" placeholder="Add URL" />
-                <input type="hidden" name="title" value={`context-${Object.keys(contextDocs).length + 1}.md`} />
+                <input type="hidden" name="title" value={`context-${Object.keys(files).length + 1}.md`} />
               </div>
           </form>
         </div>
