@@ -55,6 +55,16 @@ async function updateBulkFiles(docs: Doc[], folder: string) {
   }
 }
 
+async function deleteFile(title: string, folder: string) {
+  const filePath = path.join(process.cwd(), 'public', folder, title);
+  try {
+    unlinkSync(filePath);
+    console.log(`Successfully deleted ${title}`);
+  } catch (error) {
+    console.error(`Error deleting file ${title} in ${filePath}:`, error);
+  }
+}
+
 async function exportHtmlToPdf(formData: FormData) {
   const doc = formData.get('doc') as string;
   let docName = formData.get('docName') as string || `document`;
@@ -84,4 +94,4 @@ async function exportHtmlToPdf(formData: FormData) {
   });
 }
 
-export { updateBulkFiles, getFiles, exportHtmlToPdf };
+export { updateBulkFiles, getFiles, exportHtmlToPdf, deleteFile };

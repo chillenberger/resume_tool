@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { updateBulkFiles, exportHtmlToPdf } from '../services/file-service';
-import { getFiles } from '../services/file-service';
+import { getFiles as getServerFiles, updateBulkFiles, exportHtmlToPdf, deleteFile as deleteServerFile } from '../services/file-service';
 import { Doc } from '../types';
 
 export function useManageFiles(folder: string) {
@@ -8,10 +7,10 @@ export function useManageFiles(folder: string) {
   const [isLoading, setIsLoading] = useState(false); 
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchDocs() {
+  async function getFiles() {
     setIsLoading(true);
     try {
-      const content = await getFiles(folder);
+      const content = await getServerFiles(folder);
       setFiles(content.reduce((acc: {[key: string]: string}, doc) => {
         acc[doc.title] = doc.content;
         return acc;
@@ -40,7 +39,7 @@ export function useManageFiles(folder: string) {
     }
   }, [files]);
 
-  function createDoc(doc?: Doc) {
+  function createFile(doc?: Doc) {
     const newDoc: Doc = {
       title: doc?.title || `context-${Object.keys(files).length + 1}.md`,
       content: doc?.content || ''
@@ -48,6 +47,12 @@ export function useManageFiles(folder: string) {
 
     setFiles(prev => ({...prev, [newDoc.title]: ''}));
     return newDoc;
+  }
+
+  async function deleteFile(title: string) {
+    const {[title]: _, ...rest} = files;
+    await deleteServerFile(title, folder);
+    setFiles(rest);
   }
 
   async function exportFile(title: string, context?: string) {
@@ -64,10 +69,11 @@ export function useManageFiles(folder: string) {
     files,
     setFiles,
     isLoading, 
-    fetchDocs,
-    createDoc,
+    getFiles,
+    createFile,
     exportFile,
     syncFilesWithServer,
+    deleteFile,
     error
   }
 }

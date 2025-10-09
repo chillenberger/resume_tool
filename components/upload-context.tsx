@@ -2,14 +2,14 @@
 import { useEffect } from 'react';
 import { Dispatch, SetStateAction } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFile, faAdd } from '@fortawesome/free-solid-svg-icons';
+import { faFile, faAdd, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { Doc } from '../types';
 import Loader from './loader';
 import { useManageFiles } from '../hooks/file-manager-hook';
 import useUrlScraper from '../hooks/scraper-hook';
 
 export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: { setActiveDoc: Dispatch<SetStateAction<Doc | null>>, activeDoc: Doc | null, onComplete: () => void }) {
-  const { files, setFiles, isLoading: docsLoading, fetchDocs, createDoc, error: contextError, syncFilesWithServer } = useManageFiles('jobs');
+  const { files, setFiles, isLoading: docsLoading, getFiles, createFile, error: contextError, syncFilesWithServer, deleteFile } = useManageFiles('jobs');
   const { urlToDoc, isLoading: scrapeLoading, error: scrapeError } = useUrlScraper();
 
   const isLoading = docsLoading || scrapeLoading;
@@ -31,10 +31,10 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
       // Ensure some delay so people see awesome loader.
       setTimeout(resolve, 3000);
     })
-    .then(fetchDocs)
+    .then(getFiles)
     // Overwrite job description doc to new empty job description. 
     .then(() => {
-      createDoc(jobDescriptionDoc);
+      createFile(jobDescriptionDoc);
       setActiveDoc(jobDescriptionDoc);
     });
   }, []) // Empty dependency array = runs once on mount
@@ -46,7 +46,7 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     urlToDoc(formData).then( (doc: Doc | undefined) => {
       if ( doc ) {
         saveActiveDoc();
-        createDoc(doc);
+        createFile(doc);
         setActiveDoc(doc);
       }
     });
@@ -58,8 +58,15 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
       content: ''
     };
     saveActiveDoc();
-    createDoc(newDoc);
+    createFile(newDoc);
     setActiveDoc(newDoc);
+  }
+
+  function handleDeleteDoc(title: string) {
+    if( activeDoc?.title === title ) {
+      setActiveDoc(null);
+    }
+    deleteFile(title);
   }
 
   async function handleComplete() {
@@ -69,24 +76,23 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
 
  return (
     <div  className="flex flex-col justify-between h-full">
-      <div>
-        <div className="flex space-x-2 flex-col">
-          {Object.keys(files).map((title, key) => (
-            <div key={key} className={`flex flex-row gap-2 rounded-sm ${activeDoc?.title === title ? 'bg-gray-800' : ''}`}>
-              <button type="button" aria-label={`Edit ${title}`} onClick={() => {
-                handleFileChange(title);
-              }} className="text-white hover:cursor-pointer" disabled={isLoading || activeDoc?.title === title}><FontAwesomeIcon icon={faFile} /></button>
-              <div className="font-bold">{title}</div>
+      <div className="flex space-x-2 flex-col">
+        {Object.keys(files).map((title, key) => (
+          <div key={key} className={`flex flex-row gap-2 rounded-sm px-2 py-1 ${activeDoc?.title === title ? 'bg-gray-800' : ''}`}>
+            <button type="button" aria-label={`Edit ${title}`} onClick={() => {
+              handleFileChange(title);
+            }} className="text-white hover:cursor-pointer" disabled={isLoading || activeDoc?.title === title}><FontAwesomeIcon icon={faFile} /></button>
+            <div className="font-bold">{title}</div>
+            <button type="button" aria-label="delete document" onClick={() => handleDeleteDoc(title)} className="hover:cursor-pointer ms-auto" disabled={isLoading}><FontAwesomeIcon icon={faTrash} /></button>
+          </div>
+        ))}
+        <form onSubmit={handleScrapeUrl}>
+            <div className="flex flex-row gap-2 items-center  px-2 py-1">
+              <button type="button" onClick={handleCreateDoc} disabled={isLoading} aria-label="Add Document"><FontAwesomeIcon icon={faAdd} /></button>
+              <input type="url" name="url" placeholder="Add URL" />
+              <input type="hidden" name="title" value={`context-${Object.keys(files).length + 1}.md`} />
             </div>
-          ))}
-          <form onSubmit={handleScrapeUrl}>
-              <div className="flex flex-row gap-2 items-center">
-                <button type="button" onClick={handleCreateDoc} disabled={isLoading} aria-label="Add Document"><FontAwesomeIcon icon={faAdd} /></button>
-                <input type="url" name="url" placeholder="Add URL" />
-                <input type="hidden" name="title" value={`context-${Object.keys(files).length + 1}.md`} />
-              </div>
-          </form>
-        </div>
+        </form>
       </div>
 
       <div className="text-red-500">{contextError || scrapeError}</div>
