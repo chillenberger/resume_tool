@@ -1,18 +1,18 @@
 
 import useChat from '../hooks/chat-hook';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Dispatch, SetStateAction } from 'react';
 import { Doc } from '../types';
 import Loader from './loader';
 import { useManageFiles} from '../hooks/file-manager-hook';
+import FileTree from './file-tree';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
   faUser, 
   faPaperPlane, 
-  faRobot, 
-  faFile, 
-  faFileExport 
+  faRobot,
+  faFileCircleXmark
 } from '@fortawesome/free-solid-svg-icons';
 
 interface ChatWindowProps {
@@ -29,6 +29,7 @@ export default function ChatWindow({
     setActiveDocUpdated}: ChatWindowProps) {
   const { files: docs, setFiles: setDocs, isLoading: docsLoading, error: fileError, exportFile } = useManageFiles('temp');
   const { conversation, chatIndex, setChatIndex, responseId, isLoading: chatLoading, generateResumeRequest, chatRequest, error: chatError } = useChat();
+  const [discussDoc, setDiscussDoc] = useState<string | null>(null);
 
   const isLoading = docsLoading || chatLoading;
 
@@ -41,6 +42,13 @@ export default function ChatWindow({
     setActiveDocUpdated(false);
     generateResumeRequest();      
   }, []);
+
+  useEffect(() => {
+    console.log("activeDocUpdated: ", activeDocUpdated);
+    if( discussDoc === activeDoc?.title && activeDocUpdated ) {
+      setDiscussDoc(null);
+    }
+  }, [activeDocUpdated])
 
   useEffect(() => {
     const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.files;
@@ -58,46 +66,60 @@ export default function ChatWindow({
     } else {
       setActiveDoc(null);
     }
-    
+       
     // setActiveDocUpdated(false);
   }, [conversation])
 
   function handleNewRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
+    
     const formData = new FormData(event.currentTarget);
     const userRequest = formData.get('userQuery') as string;
-    
-    // if( activeDocUpdated && Object.keys(docs).length > 0 && activeDoc ) {
-    //   formData.append('doc', JSON.stringify(activeDoc));
-    // } 
 
-    chatRequest(userRequest);
+    setActiveDocUpdated(false);
+    if( discussDoc ) {
+      console.log("appending doc: ", discussDoc, docs[discussDoc as keyof typeof docs]);
+      formData.append('doc', JSON.stringify({title: discussDoc, content: docs[discussDoc as keyof typeof docs]}));
+      setDiscussDoc(null);
+    }
+
+    const doc: Doc | undefined = docs[discussDoc as keyof typeof docs] && discussDoc ? {title: discussDoc, content: docs[discussDoc as keyof typeof docs]} : undefined;
+
+    event.currentTarget.reset();
+    chatRequest(userRequest, doc);
   }
 
   function handleChangeFile(title: string) {
     if( !activeDoc ) return;
     setDocs(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
     setActiveDoc({ title, content: docs[title] });
+    setActiveDocUpdated(false);
+  }
+
+  function handleSetFileAsContext(title: string) {
+    console.log("file to upload: ", title);
+    setDocs(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
+    setDiscussDoc(title);
+    setActiveDocUpdated(false);
   }
 
   return (
-      <div className="flex flex-col gap-3 p-3 w-max-[50rem] h-full">
-        <div className="flex flex-col gap-1 mb-6">
-          {Object.keys(docs).length > 0 && 
-          Object.entries(docs).map(([title, _], key) => (
-            <div key={key} className={`flex flex-row gap-2 rounded-sm ${activeDoc?.title === title ? 'bg-gray-800' : ''}`}>
-              <button className="truncate hover:cursor-pointer" onClick={() => handleChangeFile(title)} disabled={isLoading}><FontAwesomeIcon icon={faFile}/> {title}</button>
-              <button onClick={() => handleExportFile(title)} disabled={isLoading}><FontAwesomeIcon icon={faFileExport} /></button>
-            </div>
-          ))}
-        </div>
+      <div className="flex flex-col gap-3 p-3 w-lg h-full">
+        <FileTree files={Object.entries(docs).map(([title, content]) => ({
+          title,
+          activeFile: activeDoc?.title === title,
+          onFileSelect: handleChangeFile,
+          onFileExport: handleExportFile,
+          onFileSetAsContext: handleSetFileAsContext
+        }))} />
+        
         {fileError && <div className="text-red-500">{fileError}</div>}
         <form onSubmit={handleNewRequest} className=" bg-white rounded-lg p-2 relative">
           {responseId ? <>
-            <textarea name="userQuery" className="w-full" placeholder="Discuss with ChatGPT"></textarea>
+            <textarea name="userQuery" className="chat-input" placeholder="Discuss with ChatGPT"></textarea>
             <input type="hidden" name="previousResponseId" value={responseId}/>
             <div className="absolute top-1 right-1"><button type="submit" className="hover:cursor-pointer" disabled={isLoading}>{isLoading ? <Loader withText={false}/> : <FontAwesomeIcon icon={faPaperPlane} className="text-gray-800"/>}</button></div>
+            {discussDoc && <div className="text-neutral-800">{discussDoc}<button type="button" aria-label="remove doc" onClick={() => setDiscussDoc(null)}><FontAwesomeIcon icon={faFileCircleXmark} /></button></div>}
           </> : <Loader />
           }
         </form>

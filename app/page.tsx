@@ -16,7 +16,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-row m-5">
-      <div className="flex flex-col w-md">
+      <div className="flex flex-col">
         <h1 className="mb-2">{tab === 'context' ? 'Context Docs' : 'Chat'}</h1>
         <div className="p-2 bg-view-area rounded-md border border-neutral-50/20 me-8 h-[90vh]">
           {tab === 'context' && <UploadContext setActiveDoc={setViewedDoc} activeDoc={viewedDoc} onComplete={() => setTab('chat')} />}

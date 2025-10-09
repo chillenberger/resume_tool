@@ -46,7 +46,7 @@ async function generateResume(userRequest: string): Promise<ChatConversationResp
     error: false,
   }
 
-  // await new Promise(resolve => setTimeout(resolve, 2000));
+  // await new Promise(resolve => setTimeout(resolve, 1000));
   // return testResponse;
 }
 
@@ -54,7 +54,7 @@ async function chat(formData: FormData): Promise<ChatConversationResponse> {
   const userQuery = formData.get('userQuery') as string;
   const previousResponseId = formData.get('previousResponseId') as string | null;
   const doc = formData.get('doc') as string | null;
-  const docJson: Doc | undefined = doc ? JSON.parse(doc) as Doc : undefined;
+  const docJson: Doc | undefined = doc ? JSON.parse(doc) as Doc : undefined; 
 
   const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
 
@@ -66,7 +66,7 @@ async function chat(formData: FormData): Promise<ChatConversationResponse> {
     error: false,
   }
 
-  // await new Promise(resolve => setTimeout(resolve, 4000));
+  // await new Promise(resolve => setTimeout(resolve, 1000));
   // return testResponse;
 }
 

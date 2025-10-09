@@ -7,6 +7,7 @@ import { Doc } from '../types';
 import Loader from './loader';
 import { useManageFiles } from '../hooks/file-manager-hook';
 import useUrlScraper from '../hooks/scraper-hook';
+import FileTree from './file-tree';
 
 export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: { setActiveDoc: Dispatch<SetStateAction<Doc | null>>, activeDoc: Doc | null, onComplete: () => void }) {
   const { files, setFiles, isLoading: docsLoading, getFiles, createFile, error: contextError, syncFilesWithServer, deleteFile } = useManageFiles('jobs');
@@ -29,7 +30,7 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
 
     new Promise((resolve) => {
       // Ensure some delay so people see awesome loader.
-      setTimeout(resolve, 3000);
+      setTimeout(resolve, 1000);
     })
     .then(getFiles)
     // Overwrite job description doc to new empty job description. 
@@ -75,23 +76,20 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
   }
 
  return (
-    <div  className="flex flex-col justify-between h-full">
+    <div  className="flex flex-col justify-between w-xs h-full">
       <div className="flex space-x-2 flex-col">
-        {Object.keys(files).map((title, key) => (
-          <div key={key} className={`flex flex-row gap-2 rounded-sm px-2 py-1 ${activeDoc?.title === title ? 'bg-gray-800' : ''}`}>
-            <button type="button" aria-label={`Edit ${title}`} onClick={() => {
-              handleFileChange(title);
-            }} className="text-white hover:cursor-pointer" disabled={isLoading || activeDoc?.title === title}><FontAwesomeIcon icon={faFile} /></button>
-            <div className="font-bold">{title}</div>
-            <button type="button" aria-label="delete document" onClick={() => handleDeleteDoc(title)} className="hover:cursor-pointer ms-auto" disabled={isLoading}><FontAwesomeIcon icon={faTrash} /></button>
-          </div>
-        ))}
+        <FileTree files={Object.entries(files).map(([title, _]) => ({
+          title,
+          activeFile: activeDoc?.title === title,
+          onFileSelect: handleFileChange,
+          onFileDelete: handleDeleteDoc
+        }))} />
         <form onSubmit={handleScrapeUrl}>
-            <div className="flex flex-row gap-2 items-center  px-2 py-1">
-              <button type="button" onClick={handleCreateDoc} disabled={isLoading} aria-label="Add Document"><FontAwesomeIcon icon={faAdd} /></button>
-              <input type="url" name="url" placeholder="Add URL" />
-              <input type="hidden" name="title" value={`context-${Object.keys(files).length + 1}.md`} />
-            </div>
+          <div className="flex flex-row gap-2 items-center  px-2 py-1">
+            <button type="button" onClick={handleCreateDoc} disabled={isLoading} aria-label="Add Document"><FontAwesomeIcon icon={faAdd} /></button>
+            <input type="url" name="url" placeholder="Add URL" />
+            <input type="hidden" name="title" value={`context-${Object.keys(files).length + 1}.md`} />
+          </div>
         </form>
       </div>
 

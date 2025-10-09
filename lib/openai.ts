@@ -23,8 +23,9 @@ async function askChat(userQuery: string, previousResponseId: string | null, fil
     message: userQuery,
     files: files,
   }
-  const content = { type: "input_text", text: text };
 
+  const content = { type: "input_text", text: text };
+  
   const input: ResponseInput = [{ role: "user", content: JSON.stringify(content) }];
 
   const response = await client.responses.create({

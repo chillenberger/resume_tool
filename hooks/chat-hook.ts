@@ -1,5 +1,6 @@
 import { chat, ChatConversationResponse, generateResume } from '../services/chat-service';
 import { useState } from 'react';
+import { Doc } from '../types';
 
 interface Conversation {
   request: string;
@@ -31,13 +32,16 @@ export default function useChat() {
     }).finally(() => { setIsLoading(false); });
   }
 
-  function chatRequest(userQuery: string ) {
+  function chatRequest(userQuery: string, file?: Doc ) {
     setIsLoading(true);
 
     const formData = new FormData();
     formData.append('userQuery', userQuery)
     if( responseId ) {
       formData.append('previousResponseId', responseId);
+    }
+    if( file ) {
+      formData.append('doc', JSON.stringify(file));
     }
 
     chat(formData)

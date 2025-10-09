@@ -77,7 +77,7 @@ async function exportHtmlToPdf(formData: FormData) {
   docName = docName.split('.')[0];
 
   const timeStamp = Date.now();
-  const outputFilePath = path.join(process.cwd(), 'public', 'outputs', `${docName}_${timeStamp}.pdf`);
+  const outputFilePath = path.join(process.cwd(), 'public', 'outputs', `${docName}.pdf`);
   const tempFilePath = path.join(process.cwd(), 'public', 'temp', `${docName}_${timeStamp}.html`);
 
   const command = `html2pdf ${tempFilePath} --background --output ${outputFilePath}`;
