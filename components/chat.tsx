@@ -44,7 +44,6 @@ export default function ChatWindow({
   }, []);
 
   useEffect(() => {
-    console.log("activeDocUpdated: ", activeDocUpdated);
     if( discussDoc === activeDoc?.title && activeDocUpdated ) {
       setDiscussDoc(null);
     }
@@ -78,7 +77,6 @@ export default function ChatWindow({
 
     setActiveDocUpdated(false);
     if( discussDoc ) {
-      console.log("appending doc: ", discussDoc, docs[discussDoc as keyof typeof docs]);
       formData.append('doc', JSON.stringify({title: discussDoc, content: docs[discussDoc as keyof typeof docs]}));
       setDiscussDoc(null);
     }
@@ -97,7 +95,6 @@ export default function ChatWindow({
   }
 
   function handleSetFileAsContext(title: string) {
-    console.log("file to upload: ", title);
     setDocs(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
     setDiscussDoc(title);
     setActiveDocUpdated(false);
