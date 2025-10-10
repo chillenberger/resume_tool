@@ -32,12 +32,10 @@ const useAnimationFrame = (callback: (deltaTime: number) => void, isRunning = tr
   }, [animate, isRunning]);
 };
 
-const WaterAscii: React.FC = () => {
+const WaterAscii: React.FC<{rows: number, cols: number}> = ({rows, cols}) => {
   const [frame, setFrame] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const characters = '~≈≋⋿⊰⊱◟◝';
-  const rows = 50;
-  const cols = 152; // Adjusted for better fit in container
   
   // Pre-calculate constants
   const centerPos = { x: 0.5, y: 0.5 };
@@ -159,7 +157,8 @@ const WaterAscii: React.FC = () => {
               style={{ 
                 opacity: row.opacity, 
                 margin: 0,
-                lineHeight: '1' 
+                lineHeight: '1',
+                fontFamily: 'monospace',
               }}
             >
               {row.text}

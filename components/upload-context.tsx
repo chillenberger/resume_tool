@@ -27,7 +27,7 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
 
     new Promise((resolve) => {
       // Ensure some delay so people see awesome loader.
-      setTimeout(resolve, 1000);
+      setTimeout(resolve, 3000);
     })
     .then(getFiles)
     // Overwrite job description doc to new empty job description. 

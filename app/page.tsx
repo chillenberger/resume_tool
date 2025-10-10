@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import UploadContext from '../components/upload-context';
 import ChatWindow from '../components/chat';
 import { Doc } from '../types';
@@ -13,6 +13,24 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>('context');
   const [viewedDoc, setViewedDoc] = useState<Doc | null>(null);
   const [docUpdated, setDocUpdated] = useState<boolean>(false);
+  const [waterSize, setWaterSize] = useState<{rows: number, cols: number}>({rows: 0, cols: 0});
+  const waterContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function updateWaterSize() {
+      if (waterContainerRef.current) {
+        const height = waterContainerRef.current.clientHeight;
+        const width = waterContainerRef.current.clientWidth;
+        const approxCharHeight = 15; // Approximate character height in pixels
+        const approxCharWidth = 10; // Approximate character width in pixels
+        const rows = Math.floor(height / approxCharHeight);
+        const cols = Math.floor(width / approxCharWidth);
+        setWaterSize({ rows, cols });
+      }
+    }
+
+    updateWaterSize();
+  }, [waterContainerRef.current]);
 
   return (
     <div className="flex flex-row m-5">
@@ -41,7 +59,7 @@ export default function Home() {
           </>
           }
           {
-            !viewedDoc && <div className="h-[90vh]"><WaterAscii /></div>
+            !viewedDoc && <div className="h-[90vh]" ref={waterContainerRef}><WaterAscii rows={waterSize.rows} cols={waterSize.cols} /></div>
           }
         </div>
       </div>
