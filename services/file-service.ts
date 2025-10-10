@@ -1,6 +1,6 @@
 'use server'
 
-import { writeFileSync, unlinkSync } from 'fs';
+import { writeFileSync, unlinkSync, existsSync } from 'fs';
 import path from 'path';
 import { Doc } from '../types';
 import { readFile, readdir } from 'fs';
@@ -14,10 +14,17 @@ async function getFiles(folder: string): Promise<Doc[]> {
         return reject(err);
       }
 
+      // Filter out system files and hidden files
+      const validFiles = files.filter(file => 
+        !file.startsWith('.') && 
+        !file.startsWith('~') &&
+        file.length > 0
+      );
+
       const docs: Doc[] = [];
 
       // Create promises for reading each file
-      const fileReadPromises = files.map(file => {
+      const fileReadPromises = validFiles.map(file => {
         return new Promise<void>((fileResolve, fileReject) => {
           const fullPath = path.join(process.cwd(), 'public', folder, file);
 
@@ -43,15 +50,27 @@ async function getFiles(folder: string): Promise<Doc[]> {
   })
 }
 
-async function updateBulkFiles(docs: Doc[], folder: string) {
-  const filePath = path.join(process.cwd(), 'public', folder);
+async function syncServerToFiles(files: Doc[], folder: string) {
+  const serverFiles = await getFiles(folder);
+  for ( const serverFile of serverFiles ) {
+    const file = files.find(f => f.title === serverFile.title);
+    if ( !file ) {
+      await deleteFile(serverFile.title, folder);
+    }
+  }
+
+  for ( const file of files ) {
+    await updateFile(file, folder);
+  }
+}
+
+async function updateFile(doc: Doc, folder: string) {
+  const filePath = path.join(process.cwd(), 'public', folder, doc.title);
   try {
-    docs.forEach(doc => {
-      writeFileSync(path.join(filePath, doc.title), doc.content, { flag: 'w' });
-      console.log(`Successfully updated ${doc.title}`);
-    });
+    writeFileSync(filePath, doc.content, { flag: 'w' });
+    console.log(`Successfully updated ${doc.title}`);
   } catch (error) {
-    console.error(`Error updating files in ${filePath}:`, error);
+    console.error(`Error updating file ${doc.title} in ${filePath}:`, error);
   }
 }
 
@@ -94,4 +113,4 @@ async function exportHtmlToPdf(formData: FormData) {
   });
 }
 
-export { updateBulkFiles, getFiles, exportHtmlToPdf, deleteFile };
+export { syncServerToFiles, getFiles, exportHtmlToPdf, deleteFile };

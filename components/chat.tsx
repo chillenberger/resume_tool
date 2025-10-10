@@ -27,7 +27,7 @@ export default function ChatWindow({
     activeDoc, 
     activeDocUpdated, 
     setActiveDocUpdated}: ChatWindowProps) {
-  const { files: docs, setFiles: setDocs, isLoading: docsLoading, error: fileError, exportFile } = useManageFiles('temp');
+  const { files: docs, fileDispatch, isLoading: docsLoading, error: fileError, exportFile } = useManageFiles('temp');
   const { conversation, chatIndex, setChatIndex, responseId, isLoading: chatLoading, generateResumeRequest, chatRequest, error: chatError } = useChat();
   const [discussDoc, setDiscussDoc] = useState<string | null>(null);
 
@@ -52,11 +52,18 @@ export default function ChatWindow({
   useEffect(() => {
     const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.files;
     if ( !lastChatResponseFiles ) return;
+
     const newAndUpdatedFiles: { [key: string]: string } = {};
+
+    if ( activeDoc ) {
+      fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
+      setActiveDocUpdated(false);
+    }
+
     lastChatResponseFiles.forEach(file => {
-      newAndUpdatedFiles[file.title] = file.content
+      newAndUpdatedFiles[file.title] = file.content;
+      fileDispatch({ type: 'update', title: file.title, content: file.content });
     })
-    setDocs(prev => ({...prev, ...newAndUpdatedFiles}))
 
     if ( lastChatResponseFiles[0] ) {
       setActiveDoc({title: lastChatResponseFiles[0].title, content: lastChatResponseFiles[0].content});
@@ -66,7 +73,6 @@ export default function ChatWindow({
       setActiveDoc(null);
     }
        
-    // setActiveDocUpdated(false);
   }, [conversation])
 
   function handleNewRequest(event: React.FormEvent<HTMLFormElement>) {
@@ -88,14 +94,13 @@ export default function ChatWindow({
   }
 
   function handleChangeFile(title: string) {
-    if( !activeDoc ) return;
-    setDocs(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
+    if( activeDoc ) fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
     setActiveDoc({ title, content: docs[title] });
     setActiveDocUpdated(false);
   }
 
   function handleSetFileAsContext(title: string) {
-    setDocs(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
+    if( activeDoc ) fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
     setDiscussDoc(title);
     setActiveDocUpdated(false);
   }

@@ -1,20 +1,42 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getFiles as getServerFiles, updateBulkFiles, exportHtmlToPdf, deleteFile as deleteServerFile } from '../services/file-service';
+import { useState, useEffect, useCallback, useReducer } from 'react';
+import { getFiles as getServerFiles, syncServerToFiles, exportHtmlToPdf, deleteFile as deleteServerFile } from '../services/file-service';
 import { Doc } from '../types';
 
+type fileOperations = "add" | "update" | "delete";
+
+function fileReducer(state: {[key: string]: string} = {}, action?: { type: fileOperations, title?: string, content?: string }) {
+  if (!action) {
+    return state;
+  }
+  switch(action.type) {
+    case 'add':
+    case 'update':
+      if (!action.title || action.content === undefined) {
+        throw new Error("Title and content must be provided for add or update actions");
+      }
+      let test = {...state, [action.title]: action.content};
+      return test;
+    case 'delete':
+      if (!action.title) {
+        throw new Error("Title must be provided for delete action");
+      }
+      const { [action.title]: _, ...rest } = state;
+      return rest;
+  }
+}
+
 export function useManageFiles(folder: string) {
-  const [files, setFiles] = useState<{[key: string]: string}>({});
-  const [isLoading, setIsLoading] = useState(false); 
+  const [files, fileDispatch] = useReducer(fileReducer, {});
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function getFiles() {
     setIsLoading(true);
     try {
-      const content = await getServerFiles(folder);
-      setFiles(content.reduce((acc: {[key: string]: string}, doc) => {
-        acc[doc.title] = doc.content;
-        return acc;
-      }, {}));
+      const files = await getServerFiles(folder);
+      files.forEach(({title, content}) => {
+        fileDispatch({ type: 'add', title, content });
+      });
     } catch (error) {
       setError("Failed to fetch documents");
     } finally {
@@ -27,33 +49,17 @@ export function useManageFiles(folder: string) {
     if (Object.keys(files).length > 0) syncFilesWithServer();
   }, [files]);
 
-  const syncFilesWithServer = useCallback(async (newFiles?: {[key: string]: string}) => {
+  const syncFilesWithServer = useCallback(async () => {
     setIsLoading(true);
     try {
-      const docs: Doc[] = Object.entries({ ...files, ...newFiles }).map(([title, content]) => ({ title, content }));
-      await updateBulkFiles(docs, folder);
+      const docs: Doc[] = Object.entries({ ...files }).map(([title, content]) => ({ title, content }));
+      await syncServerToFiles(docs, folder);
     } catch (error) {
       setError("Failed to sync documents");
     } finally {
       setIsLoading(false);
     }
   }, [files]);
-
-  function createFile(doc?: Doc) {
-    const newDoc: Doc = {
-      title: doc?.title || `context-${Object.keys(files).length + 1}.md`,
-      content: doc?.content || ''
-    };
-
-    setFiles(prev => ({...prev, [newDoc.title]: ''}));
-    return newDoc;
-  }
-
-  async function deleteFile(title: string) {
-    const {[title]: _, ...rest} = files;
-    await deleteServerFile(title, folder);
-    setFiles(rest);
-  }
 
   async function exportFile(title: string, context?: string) {
     const formData = new FormData();
@@ -67,13 +73,10 @@ export function useManageFiles(folder: string) {
 
   return {
     files,
-    setFiles,
+    fileDispatch,
     isLoading, 
     getFiles,
-    createFile,
     exportFile,
-    syncFilesWithServer,
-    deleteFile,
     error
   }
 }

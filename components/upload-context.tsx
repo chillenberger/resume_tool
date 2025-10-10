@@ -1,8 +1,8 @@
 'use client'
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Dispatch, SetStateAction } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFile, faAdd, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faAdd } from '@fortawesome/free-solid-svg-icons';
 import { Doc } from '../types';
 import Loader from './loader';
 import { useManageFiles } from '../hooks/file-manager-hook';
@@ -10,18 +10,15 @@ import useUrlScraper from '../hooks/scraper-hook';
 import FileTree from './file-tree';
 
 export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: { setActiveDoc: Dispatch<SetStateAction<Doc | null>>, activeDoc: Doc | null, onComplete: () => void }) {
-  const { files, setFiles, isLoading: docsLoading, getFiles, createFile, error: contextError, syncFilesWithServer, deleteFile } = useManageFiles('jobs');
+  const { files, fileDispatch, isLoading: docsLoading, getFiles, error: contextError } = useManageFiles('jobs');
   const { urlToDoc, isLoading: scrapeLoading, error: scrapeError } = useUrlScraper();
+  const [triggerCallback, setTriggerCallback] = useState<boolean>(false);
 
   const isLoading = docsLoading || scrapeLoading;
 
-  function saveActiveDoc() {
-    setFiles(prev => activeDoc ? ({...prev, [activeDoc.title]: activeDoc.content}) : prev);
-  }
-
   function handleFileChange(title: string) {
     if( !activeDoc ) return;
-    saveActiveDoc();
+    fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
     setActiveDoc({ title, content: files[title] });
   }
 
@@ -35,10 +32,15 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     .then(getFiles)
     // Overwrite job description doc to new empty job description. 
     .then(() => {
-      createFile(jobDescriptionDoc);
+      fileDispatch({ type: 'add', title: jobDescriptionDoc.title, content: jobDescriptionDoc.content });
       setActiveDoc(jobDescriptionDoc);
     });
   }, []) // Empty dependency array = runs once on mount
+
+  useEffect(() => {
+    if ( !triggerCallback ) return;
+    onComplete();
+  }, [triggerCallback]);
 
   function handleScrapeUrl(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,8 +48,8 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     event.currentTarget.reset();
     urlToDoc(formData).then( (doc: Doc | undefined) => {
       if ( doc ) {
-        saveActiveDoc();
-        createFile(doc);
+        fileDispatch({ type: 'update', title: activeDoc!.title, content: activeDoc!.content });
+        fileDispatch({ type: 'add', title: doc.title, content: doc.content });
         setActiveDoc(doc);
       }
     });
@@ -58,8 +60,10 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
       title: `context-${Object.keys(files).length + 1}.md`,
       content: ''
     };
-    saveActiveDoc();
-    createFile(newDoc);
+    if ( activeDoc ) {
+      fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
+    }
+    fileDispatch({ type: 'add', title: newDoc.title, content: newDoc.content });
     setActiveDoc(newDoc);
   }
 
@@ -67,12 +71,14 @@ export default function UploadContext({ setActiveDoc, activeDoc, onComplete }: {
     if( activeDoc?.title === title ) {
       setActiveDoc(null);
     }
-    deleteFile(title);
+    fileDispatch({ type: 'delete', title });
   }
 
-  async function handleComplete() {
-    await syncFilesWithServer(activeDoc ? { [activeDoc.title]: activeDoc.content } : undefined);
-    onComplete();
+  function handleComplete() {
+    if ( activeDoc ) {
+      fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
+    }
+    setTriggerCallback(true);
   }
 
  return (
