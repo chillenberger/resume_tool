@@ -104,7 +104,8 @@ const WaterAscii: React.FC = () => {
         const charIndex = Math.floor(Math.abs(charValue)) % charactersLength;
         
         // Calculate opacity - characters seek lower places like water
-        const opacity = Math.max(0.2, Math.min(0.8, 1 - dist + Math.sin(wave) / 3));
+        const opacityRaw = Math.max(0.2, Math.min(0.8, 1 - dist + Math.sin(wave) / 3));
+        const opacity = Math.round(opacityRaw * 100) / 100; // Round to 2 decimal places
         
         // Set row opacity to average of all opacity values in the row (approximation)
         if (x === 0) rowOpacity = opacity;
