@@ -84,7 +84,8 @@ const testResponse = {
         title: "coverletter.html",
         content: "<html><body><h1>Test Cover Letter</h1></body></html>"
       }
-    ]
+    ],
+    special_instructions: "These are some special instructions."
   },
   lastResponseId: "test-response-id",
   error: false

@@ -1,6 +1,6 @@
 
 import useChat from '../hooks/chat-hook';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Dispatch, SetStateAction } from 'react';
 import { Doc } from '../types';
 import Loader from './loader';
@@ -12,7 +12,8 @@ import {
   faUser, 
   faPaperPlane, 
   faRobot,
-  faFileCircleXmark
+  faFileCircleXmark,
+  faCircleExclamation
 } from '@fortawesome/free-solid-svg-icons';
 
 interface ChatWindowProps {
@@ -134,7 +135,8 @@ export default function ChatWindow({
         </div>
         {conversation.length > 0 &&
           <div className="overflow-y-auto">
-            <div className="border-b-1 border-neutral-50/50 pb-2">
+            {conversation[chatIndex]?.response?.response?.special_instructions && <div className="border-b-1 border-neutral-50/50 pb-2" ><FontAwesomeIcon icon={faCircleExclamation} />{': '}{conversation[chatIndex]?.response?.response?.special_instructions}</div>}
+            <div className="border-b-1 border-neutral-50/50 py-2">
               <FontAwesomeIcon icon={faUser} />{': '}
               {conversation[chatIndex]?.request }
             </div>
