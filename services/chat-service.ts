@@ -1,10 +1,9 @@
 'use server'
 
 import path from 'path';
-import { Conversation, Doc } from '../types';
+import { Conversation, File} from '../types';
 import fs from 'fs';
 import {askChat} from '../lib/openai';
-import { getFiles } from './file-service';
 
 export type ChatConversationResponse = {
   response: Conversation | null | undefined;
@@ -12,49 +11,16 @@ export type ChatConversationResponse = {
   error: boolean;
 };
 
-async function generateResume(userRequest: string): Promise<ChatConversationResponse> {
-  const resumeDataPath = path.join(process.cwd(), 'public', 'resume_data.json');
-  const resumeTemplatePath = path.join(process.cwd(), 'public', 'templates', 'resume_template.html');
-  const coverletterTemplatePath = path.join(process.cwd(), 'public', 'templates', 'coverletter_template.html');
-
-  const resumeData = fs.readFileSync(resumeDataPath, 'utf-8');
-  const resumeTemplate = fs.readFileSync(resumeTemplatePath, 'utf-8');
-  const coverletterTemplate = fs.readFileSync(coverletterTemplatePath, 'utf-8');
-
-  const contextDocs = await getFiles('jobs');
-
-  const file  = [{
-    title: "resume_data.json",
-    content: resumeData
-  }, {
-    title: "resume_template.html",
-    content: resumeTemplate
-  }, {
-    title: "coverletter_template.html",
-    content: coverletterTemplate
-  }]
-
-
-  contextDocs.forEach( doc => {file.push({title: doc.title, content: doc.content})});
-
-  // const resp = await askChat(userRequest, null, file);
-  // const conversationData: Conversation = JSON.parse(resp?.output_text || '{}');
-
-  // return {
-  //   response: conversationData,
-  //   lastResponseId: resp?.id,
-  //   error: false,
-  // }
-
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return testResponse;
-}
-
 async function chat(formData: FormData): Promise<ChatConversationResponse> {
   const userQuery = formData.get('userQuery') as string;
   const previousResponseId = formData.get('previousResponseId') as string | null;
   const doc = formData.get('doc') as string | null;
-  const docJson: Doc | undefined = doc ? JSON.parse(doc) as Doc : undefined; 
+  const docJson: File | undefined = doc ? JSON.parse(doc) as File : undefined;
+
+  console.log("User Query: ", userQuery);
+  console.log("Previous Response ID: ", previousResponseId);
+  console.log("Doc: ", doc);
+  console.log("Doc JSON: ", docJson);
 
   // const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
 
@@ -70,18 +36,18 @@ async function chat(formData: FormData): Promise<ChatConversationResponse> {
   return testResponse;
 }
 
-export { generateResume, chat };
+export {chat };
 
 const testResponse = {
   response: {
     message: "This is a test response",
     files: [
       {
-        title: "resume.html",
+        path: "project-1/resume.html",
         content: "<html><body><h1>Test Resume</h1></body></html>"
       },
       {
-        title: "coverletter.html",
+        path: "project-1/coverletter.html",
         content: "<html><body><h1>Test Cover Letter</h1></body></html>"
       }
     ],

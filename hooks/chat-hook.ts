@@ -1,6 +1,6 @@
-import { chat, ChatConversationResponse, generateResume } from '../services/chat-service';
+import { chat, ChatConversationResponse } from '../services/chat-service';
 import { useState } from 'react';
-import { Doc } from '../types';
+import { Doc, File } from '../types';
 
 interface Conversation {
   request: string;
@@ -14,25 +14,7 @@ export default function useChat() {
   const [error, setError] = useState<string | null>(null);
   const [chatIndex, setChatIndex] = useState<number>(0);
 
-  function generateResumeRequest() {
-    setIsLoading(true);
-    const userRequest = "Please create a resume with the provided data.";
-
-    generateResume(userRequest).then(resp => {
-      const newConversation: Conversation = {
-        request: userRequest,
-        response: resp
-      };
-
-      setConversation([...conversation, newConversation]);
-      setResponseId(resp.lastResponseId || null);
-      
-    }).catch(error => {
-      setError("Error generating resume");
-    }).finally(() => { setIsLoading(false); });
-  }
-
-  function chatRequest(userQuery: string, file?: Doc ) {
+  function chatRequest(userQuery: string, files?: File[] ) {
     setIsLoading(true);
 
     const formData = new FormData();
@@ -40,8 +22,8 @@ export default function useChat() {
     if( responseId ) {
       formData.append('previousResponseId', responseId);
     }
-    if( file ) {
-      formData.append('doc', JSON.stringify(file));
+    if( files ) {
+      formData.append('doc', JSON.stringify(files));
     }
 
     chat(formData)
@@ -73,7 +55,6 @@ export default function useChat() {
     setChatIndex,
     isLoading,
     error,
-    generateResumeRequest,
     chatRequest
   }
 }

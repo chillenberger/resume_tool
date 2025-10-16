@@ -1,9 +1,11 @@
 import OpenAI from "openai";
 import { ResponseInput } from "openai/resources/responses/responses.mjs";
 import { zodTextFormat } from "openai/helpers/zod";
-import { conversationSchema, Conversation, Doc } from "../types";
+import { conversationSchema, Conversation, File } from "../types";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAIClient() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 const SYSTEM_PROMPT = `
 You are a professional career coach that helps me tailor my resume to a provided job description using my provided resume json data.
@@ -22,8 +24,8 @@ We will use the following schema for our conversations:
 ${conversationSchema}
 `
 
-async function askChat(userQuery: string, previousResponseId: string | null, files: Doc[]) {
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+async function askChat(userQuery: string, previousResponseId: string | null, files: File[]) {
+  const client = getOpenAIClient();
 
   const text: Conversation = {
     message: userQuery,
