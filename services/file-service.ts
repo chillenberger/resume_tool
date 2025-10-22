@@ -10,8 +10,30 @@ import exec from 'child_process';
 const rootDir = path.join(process.cwd(), 'public', 'projects');
 const outputRoot = path.join(process.cwd(), 'public', 'outputs');
 const tempRoot = path.join(process.cwd(), 'public', 'temp');
+const resumeDataRoot = path.join(process.cwd(), 'public', 'resume_data');
+const templateRoot = path.join(process.cwd(), 'public', 'templates');
 
 // TODO: ensure no files outside public are ever updated. Security risk.
+
+async function createNewProject(projectName: string) {
+  const projectPath = path.join(rootDir, projectName);
+  try {
+    statSync(projectPath);
+    throw new Error(`Project ${projectName} already exists`);
+  } catch (error) {
+    // Directory does not exist, create it
+    fs.mkdirSync(projectPath);
+    console.log(`Created new project: ${projectName}`);
+  }
+
+  try {
+    fs.cpSync(templateRoot, path.join(projectPath, 'templates'), { recursive: true });
+    fs.cpSync(resumeDataRoot, path.join(projectPath, 'resume_data'), { recursive: true });
+  } catch (error) {
+    console.error(`Error copying template files to new project:`, error);
+    throw error;
+  }
+}
 
 async function getDirContents(folder: string): Promise<Dir> {
   return new Promise((resolve, reject) => {
@@ -140,4 +162,4 @@ async function exportHtmlToPdf(formData: FormData) {
   });
 }
 
-export { exportHtmlToPdf, deleteFile, getDirContents, syncServerToDir};
+export { exportHtmlToPdf, deleteFile, getDirContents, syncServerToDir, createNewProject};

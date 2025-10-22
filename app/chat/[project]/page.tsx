@@ -32,7 +32,7 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
   return (
     <div className="flex flex-row m-5">
       <div className="flex flex-col">
-        <h1 className="mb-2">Project: {project}</h1>
+        <h1 className="mb-2"><a href="/">Projects</a> / {project}</h1>
         <div className="p-2 bg-view-area rounded-md border border-neutral-50/20 me-8 h-[90vh]">
           <ChatWindow project={project} setActiveDoc={setViewedDoc} activeDoc={viewedDoc} activeDocUpdated={docUpdated} setActiveDocUpdated={setDocUpdated} />
         </div>

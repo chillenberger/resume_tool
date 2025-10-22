@@ -1,42 +1,61 @@
 'use server'
 
-import path from 'path';
-import { Conversation, File} from '../types';
-import fs from 'fs';
-import {askChat} from '../lib/openai';
+import { Conversation, File, ChatResponse, ChatSchema, ChatLog} from '../types';
+import { askChat } from '../lib/openai';
+import { createChatLog, getChatLogsByProject } from './db-service';
 
-export type ChatConversationResponse = {
-  response: Conversation | null | undefined;
-  lastResponseId: string;
-  error: boolean;
-};
-
-async function chat(formData: FormData): Promise<ChatConversationResponse> {
+async function chat(formData: FormData): Promise<ChatResponse> {
   const userQuery = formData.get('userQuery') as string;
   const previousResponseId = formData.get('previousResponseId') as string | null;
+  const projectName = formData.get('projectName') as string | null;
   const doc = formData.get('doc') as string | null;
   const docJson: File | undefined = doc ? JSON.parse(doc) as File : undefined;
 
-  console.log("User Query: ", userQuery);
-  console.log("Previous Response ID: ", previousResponseId);
-  console.log("Doc: ", doc);
-  console.log("Doc JSON: ", docJson);
+  const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
 
-  // const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
+  const conversationData: ChatSchema = JSON.parse(resp?.output_text || '{}');
 
-  // const conversationData: Conversation = JSON.parse(resp?.output_text || '{}');
+  const chatLogEntry = {
+    user_id: "user-123",
+    project_id: projectName || 'default',
+    response_id: resp?.id,
+    previous_response_id: previousResponseId,
+    request_text: userQuery,
+    response_text: conversationData.message,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
+  }
 
-  // return {
-  //   response: conversationData,
-  //   lastResponseId: resp?.id,
-  //   error: false,
-  // }
+  await createChatLog(chatLogEntry);
 
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return testResponse;
+  return {
+    response: conversationData,
+    lastResponseId: resp?.id,
+    error: false,
+  }
+
+  // await new Promise(resolve => setTimeout(resolve, 1000));
+  // return testResponse;
 }
 
-export {chat };
+async function getChatLog(projectName: string): Promise<Conversation[]> {
+  const chatLogs: ChatLog[] = await getChatLogsByProject(projectName);
+  return chatLogs.map(log => ({
+    request: log.request_text || '',
+    response: {
+      response: {
+        message: log.response_text || '',
+        files: [],
+        special_instructions: ''
+      },
+      lastResponseId: log.response_id,
+      error: false, 
+    }
+  }));
+}
+
+export {chat, getChatLog};
 
 const testResponse = {
   response: {

@@ -3,10 +3,13 @@ import { useManageFiles } from "@/hooks/file-manager-hook";
 
 
 export default function Home() {
-  const { dir, isLoading, error } = useManageFiles('projects');
+  const { dir, addProject, isLoading, error } = useManageFiles('');
 
-  const handleFileSelect = (title: string) => {
-    console.log("chose a file: ", title)
+  const handleCreateNewProject = async () => {
+    const projectName = prompt("Enter project name:");
+    if (projectName) {
+      addProject(projectName);
+    }
   }
 
   return (
@@ -16,7 +19,8 @@ export default function Home() {
         {isLoading && <p>Loading...</p>}
         {error && <p>Error loading projects</p>}
 
-        {dir.children.map((item, i) => (<div key={i} onClick={() => handleFileSelect(item.title)}>{'children' in item && item.title}</div>))}
+        {dir.children.map((item, i) => (<a key={i} href={`/chat/${item.title}`}>{'children' in item && item.title}</a>))}
+        <button onClick={handleCreateNewProject} className="hover:cursor-pointer">Create New Project</button>
       </div>
     </div>
   );

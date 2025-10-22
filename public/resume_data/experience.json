@@ -1,0 +1,154 @@
+
+{
+  "experience": [
+    {
+      "company": "Freelance Software Engineer",
+      "location": "Grand Junction, CO",
+      "position": "Founding Full Stack Rust Engineer",
+      "duration": "Feb 2023 - current",
+      "description": "Full-stack development",
+      "responsibilities": [
+        "Built sorting and filtering functionality for blockchain site using React.ts and Django.",
+        "Developed in Docker containers for local development."
+      ]
+    },
+    {
+      "company": "Hyperparam Inc.",
+      "location": "Tiburon, CA",
+      "position": "Founding Full Stack Rust Engineer",
+      "duration": "Feb 2023 - current",
+      "description": "Full-stack development of PostgresML and Sundry projects, bringing ML/AI to developers.",
+      "responsibilities": [
+        "Full-stack development of PostgresML (both marketing and product sides), using Rust, Rocket, Bootstrap, Turbo, and Stimulus.",
+        "Built and shipped major features across marketing and product platforms using Rust, Rocket, Turbo, Stimulus, and SSR frameworks.",
+        "Collaborated with designers and used Figma to Rebuilt PostgresML's front-end with a modern design.",
+        "Designed and launched Organizations functionality, enabling enterprise adoption and supporting 1000+ user teams.",
+        "Implemented a comprehensive CMS, simplifying content management, publication, and organization.",
+        "Built a Sendgrid-powered email platform that cut campaign launch time from days to hours, boosting time to live by 50%.",
+        "Owned end-to-end design and delivery of major features, including Organizations, CMS, and Sendgrid-powered email platform.",
+        "Built a proof-of-concept LLM context provider web application with Rust, Leptos, and Tailwind in a 2-month greenfield project.",
+        "Mitigated production risk by leading rollout/rollback strategies for high-risk PostgreSQL migrations, ensuring 0 data loss incidents.",
+        "Led architecture improvements and mentored junior developers to ensure scalability, maintainability, and engineering standards.",
+        "Oversaw all front-end development, ensuring scalable, maintainable, and accessible code across platforms.",
+        "Increased average page load efficiency by 20% by resolving front-end issues related to re-fetching.",
+        "Resolved bugs related to open- vs closed-source segregation, webhooks, and state management.",
+        "Reduced broken link occurrence to zero with custom web scraper.",
+        "Collaborated across design, operations, and extension teams while mentoring junior members, reinforcing best practices in responsive design and code architecture.",
+        "Contributed technical content (e.g., building Express.js apps with PostgresML) and engaged with the open-source developer community.",
+        "Wrote PostgreSQL migrations for managing schema changes, including complex queries for customer and billing data.",
+        "Tracked and resolved issues using DataDog and Sentry."
+      ]
+    },
+    {
+      "company": "Smart Warehousing",
+      "location": "Overland Park, KS", 
+      "position": "Frontend React Engineer",
+      "duration": "July 2022 - Dec 2022",
+      "description": "Developed products that streamlined the warehousing industry using React and TypeScript.",
+      "responsibilities": [
+        "Developed user-facing features in React/TypeScript with responsive design, integrating with Node.js backend APIs for real-time logistics and warehouse management functions.",
+        "Integrated front-end components with back-end services using RESTful APIs.",
+        "Created Micro Frontends with Single Spa, enhancing modularity and scalability across teams.",
+        "Built and maintained a reusable UI/component library deployed via AWS CodeArtifact using NPM, Webpack, Rollup, Babel, Husky, Jest, and Storybook.",
+        "Improved development cycle time by designing reusable component libraries deployed via AWS CodeArtifact.",
+        "Strengthened product quality through robust testing pipelines using Jest, Mock Service Worker, and Storybook.",
+        "Conducted thorough code reviews for both frontend and backend components, ensuring scalability and maintainability.",
+        "Collaborated in Agile teams using Jira and Confluence, driving efficient development workflows from design to deployment.",
+        "Assisted design teams in creating functional, user-friendly interfaces using Figma, aligning with modern UX/UI principles.",
+        "Discovered and resolved system-wide issues by coordinating solutions with designers, backend engineers, and project owners.",
+        "Used and managed Webpack and Rollup build tools to optimize bundling and deployment."
+      ]
+    },
+    {
+      "company": "Shipmate Box",
+      "location": "Grand Junction, CO",
+      "position": "Co-Founder & CEO", 
+      "duration": "August 2021 – Jan 2023",
+      "description": "Building a network of home lockboxes for receiving delivery packages.",
+      "responsibilities":[
+        "Designed and shipped full product stack (web, mobile, hardware) using React, React Native, Node.js, and AWS (IoT Core, Lambda, S3, DynamoDB).",
+        "Managed budget, product roadmap, and first MVP launch."
+      ]
+    },
+    {
+      "company": "Smart-X Holdings, Inc.",
+      "location": "Grand Junction, CO",
+      "position": "Co-Founder & Dir. Electrical Engineering",
+      "duration": "August 2019 – August 2021", 
+      "description": "Startup company developing consumer IoT products.",
+      "responsibilities": [
+        "Designed IoT hardware using KiCad with capabilities including barcode scanning, passive and active infrared motion detection, and internet access.",
+        "Programmed all embedded firmware using C.",
+        "Developed Python-based smart hub software using Flask.",
+        "Built an email scraper proof of concept using the NLTK library.",
+        "Integrated with REST services from Gmail, FedEx, and USPS.",
+        "Wrote and executed testing procedures, hardware specifications, and software specifications.",
+        "Created market analysis and product value analysis white papers in collaboration with the CEO.",
+        "Managed budgeting, forecasting, and accounting.",
+        "Led investor meetings and managed investor relations."
+      ]
+    },
+    {
+      "company": "Naval Nuclear Laboratory",
+      "location": "Milton, NY",
+      "position": "Senior Electrical Engineer",
+      "duration": "May 2018 - September 2019",
+      "description": "",
+      "responsibilities": [
+        "Participated in multi-tier testing scheme to find software issues present in new generation nuclear plant Instrumentation and Control software and hardware",
+        "Collaborated with team to build S1B Instrumentation and Control lab used to test software on physical components",
+        "Wrote and reviewed technical procedures to evaluate hardware and software performance",
+        "Performed tests and worked with software engineers to find and correct any hardware and software issues",
+        "Worked with computer tools such as DOORs, Excel, Python, remote servers and DERT system",
+        "Automated requirements analysis with Python scripts, boosting execution throughput by 50%.",
+        "Participated in work schedule planning and tasking team."
+      ]
+    },
+    {
+      "company": "Naval Nuclear Laboratory", 
+      "location": "Milton, NY",
+      "position": "Nuclear Plant Engineer",
+      "duration": "January 2014 - May 2018",
+      "description": "Responsible for daily operation, maintenance, and testing of the Navy land based nuclear reactor, as well as daily training of Navy and civilian students.",
+      "responsibilities": [
+          "Directed 200+ personnel through 6-month nuclear safety test, meeting strict Navy standards and earning 2018 Team Achievement Award.",
+          "Directed maintenance evolutions between subcontractors, union, non-union, and Navy personnel; enforced safety standards and ensured workforce readiness.",
+          "Managed divisional leadership to train and graduate a class of sixty students.",
+          "Supervised a team of ten in safe operation and emergency response of a land-based nuclear power plant.",
+          "Trained U.S. Navy nuclear operators on nuclear power plant operations through classroom instruction and one-on-one training.",
+          "Served as Sectional Supervisor of the Plant Simulator to support operator training and proficiency.",
+          "Applied engineering schematics and technical drawings to perform troubleshooting and maintenance.",
+          "Performed material research for applications in ultra-high vacuum environments."
+        ]
+    },
+    {
+      "company": "Colorado State University",
+      "location": "Fort Collins, CO",
+      "position": "Researcher",
+      "duration": "January 2012 - January 2014",
+      "description": "Worked in two separate labs studying cold atomic plasmas and superconductor materials.",
+      "responsibilities": [
+        "Designed and fabricated parts crucial to achieving superconductivity in lab cryocooler",
+        "Operated vacuum system to make aluminum oxide superconducting samples",
+        "Diagnosed and repaired lab electrical equipment",
+        "Programmed a simulator to model cold atomic gas expansion using Fortran",
+        "Completed the design and fabrication of an electrode apparatus used to study cold plasma",
+        "Performed material research for use in ultra-high vacuum environments"
+      ]
+    }
+  ],
+  "Projects": [
+    {
+      "name": "Text Editor",
+      "description": "A light weight and easy to use text editor that focuses on non technical users quickly spinning up a project, controlling context, and collaborating with AI.",
+      "technologies": ["Next.js", "TypeScript", "Tailwind", "OpenAI API (prompt engineering, guardrails)", "SQL"],
+      "link": "https://github.com/chillenberger/resume_tool"
+    },
+        {
+      "name": "Micro Journal",
+      "description": "An AI powered journaling application that helps users document their thoughts and experiences.",
+      "technologies": ["Next.js", "TypeScript", "Tailwind", "OpenAI API (prompt engineering, tool calling)", "SQL"]
+    }
+  ]
+}
+

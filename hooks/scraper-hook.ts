@@ -1,24 +1,24 @@
 'use client'
 import { useState } from 'react';
 import scrapeUrl from '../services/scraper-service';
-import { Doc } from '../types';
+import { File } from '../types';
 
 export default function useUrlScraper() {
-  const [error, setError] = useState<'URL is required' | 'Failed to scrape URL' | 'Title is required' | null>(null);
+  const [error, setError] = useState<'URL is required' | 'Failed to scrape URL' | 'Path is required' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function urlToDoc(formData: FormData): Promise<Doc | undefined> {
+  async function urlToDoc(path: string, url: string): Promise<File | undefined> {
     setIsLoading(true);
 
-    const url = formData.get('url') as string;
-    const title = formData.get('title') as string || `context-${Date.now()}.md`;
+    // const url = formData.get('url') as string;
+    // const title = formData.get('title') as string || `context-${Date.now()}.md`;
 
     if (!url) {
       setError('URL is required');
       setIsLoading(false);
       return;
-    } else if (!title) {
-      setError('Title is required');
+    } else if (!path) {
+      setError('Path is required');
       setIsLoading(false);
       return;
     }
@@ -28,7 +28,7 @@ export default function useUrlScraper() {
       if ( !scrapedContent || !scrapedContent.markdown ) {
         throw new Error('Failed to scrape URL');
       }
-      const rsp: Doc = { title, content: scrapedContent.markdown};
+      const rsp: File = { path, content: scrapedContent.markdown};
       return rsp;
     } catch (error) {
       setError('Failed to scrape URL');

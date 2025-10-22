@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   syncServerToDir,
   exportHtmlToPdf, 
-  getDirContents} from '@/services/file-service';
+  getDirContents,
+  createNewProject
+} from '@/services/file-service';
 import { Dir, Doc } from '../types';
 import { getDirFile, addFileToDir } from '@/lib/file';
 
@@ -57,6 +59,20 @@ export function useManageFiles(folder: string) {
     }
   }
 
+  function addProject(projectName: string) {
+    setIsLoading(true);
+    const newDir: Dir = { title: projectName, children: [] };
+    try {
+      createNewProject(projectName);
+    } catch (error) {
+      setError("Failed to create new project");
+    } finally {
+      dir.children.push(newDir);
+      setDir({ ...dir });
+      setIsLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadDir();
   }, [])
@@ -99,6 +115,7 @@ export function useManageFiles(folder: string) {
     addFile,
     isLoading,
     exportFile,
-    error
+    error, 
+    addProject
   }
 }
