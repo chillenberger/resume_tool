@@ -62,12 +62,12 @@ const testResponse = {
     message: "This is a test response",
     files: [
       {
-        path: "project-1/resume.html",
+        path: "/test-folder2/resume.html",
         content: "<html><body><h1>Test Resume</h1></body></html>"
       },
       {
-        path: "project-1/coverletter.html",
-        content: "<html><body><h1>Test Cover Letter</h1></body></html>"
+        path: "test-folder1/coverletter.html",
+        content: "<html><body><h1>Test Cover Letter 1</h1></body></html>"
       }
     ],
     special_instructions: "These are some special instructions."

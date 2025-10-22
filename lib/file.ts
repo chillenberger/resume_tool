@@ -38,6 +38,7 @@ function expandDir(db: File[]): Dir {
     return rootDir;
 }
 
+// Go down the tree to find the directory at the given path
 function findDir(path: string, dir: Dir): Dir | null {
   if (path === "") {
     return dir;

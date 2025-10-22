@@ -41,15 +41,18 @@ export function useManageFiles(folder: string) {
     setDir({ ...dir });
   }
 
+  // TODO: This is terrible, rewrite this. 
   function addFile(fullPath: string, content: string) {
-    const path = fullPath.split('/');
+    let path = fullPath.split('/');
+    // removes leading "/" if present
+    path = path.filter(part => part !== '');
     const fileName = path.pop();
 
     if ( !fileName ) throw new Error("Invalid file name");
     
     const newDoc: Doc = { title: fileName, content };
     try {
-      let existingFile = getDirFile(fullPath, dir);
+      let existingFile = getDirFile(path.join('/') + '/' + fileName, dir);
       existingFile.content = content;
       setDir({ ...dir });
       return;
