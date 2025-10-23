@@ -7,6 +7,7 @@ import {
 } from '@/services/file-service';
 import { Dir, Doc } from '../types';
 import { getDirFile, addFileToDir } from '@/lib/file';
+import path from 'path';
 
 export function useManageFiles(folder: string) {
   const [dir, setDir] = useState<Dir>({ title: folder, children: [] });
@@ -28,37 +29,37 @@ export function useManageFiles(folder: string) {
 
   function getFile(path: string): Doc | undefined {
     try {
-      return getDirFile(path, dir);
+      let doc = getDirFile(path, dir);
+      return doc ? doc : undefined;
     } catch (error) {
       setError("Failed to fetch file");
     }
   }
 
-  async function updateFile(path: string, content: string) {
-    let file = getFile(path);
-    if ( !file ) throw new Error(`File ${path} not found for update`);
+  async function updateFile(filePath: string, content: string) {
+    let file = getFile(filePath);
+    if ( !file ) throw new Error(`File ${filePath} not found for update`);
     file.content = content;
     setDir({ ...dir });
   }
 
-  // TODO: This is terrible, rewrite this. 
   function addFile(fullPath: string, content: string) {
-    let path = fullPath.split('/');
-    // removes leading "/" if present
-    path = path.filter(part => part !== '');
-    const fileName = path.pop();
-
+    const fileName = path.basename(fullPath);
     if ( !fileName ) throw new Error("Invalid file name");
     
     const newDoc: Doc = { title: fileName, content };
     try {
-      let existingFile = getDirFile(path.join('/') + '/' + fileName, dir);
-      existingFile.content = content;
+      let existingFile = getDirFile(fullPath, dir);
+      if ( existingFile ) {
+        existingFile.content = content;
+        return;
+      } else {
+        addFileToDir(path.dirname(fullPath), dir, newDoc);
+      }
       setDir({ ...dir });
       return;
     } catch (error) {
-      addFileToDir(path.join('/'), dir, newDoc);
-      setDir({ ...dir });
+      setError("Failed to add file");
     }
   }
 

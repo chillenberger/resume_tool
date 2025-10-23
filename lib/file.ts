@@ -60,26 +60,27 @@ function findDir(path: string, dir: Dir): Dir | null {
   return findDir(splitPath.join("/"), nextItem as Dir);
 }
 
-function getDirFile(fullPath: string, rootDir: Dir): Doc {
+// Return the actual doc object from the give directory. 
+function getDirFile(fullPath: string, rootDir: Dir): Doc | null {
   let splitPath = fullPath.split("/");
   const fileName = splitPath.pop();
   if ( !fileName ) {
-    throw new Error("Invalid file name");
+    return null
   }
   const dir = findDir(splitPath.join("/"), rootDir);
   if ( !dir ) {
-    throw new Error(`Directory ${splitPath.join("/")} not found`);
+    return null;
   }
 
   const file = dir.children.find(c => c.title === fileName && 'content' in c) as Doc | undefined;
   if ( !file ) {
-    throw new Error(`File ${fileName} not found in directory ${splitPath.join("/")}`);
+    return null;
   }
   return file;
 }
 
 function addFileToDir(path: string, currentDir: Dir, doc: Doc) {
-  let splitPath = path.split("/");
+  let splitPath = path.split("/").filter(part => part !== "");
   let subPath = splitPath.shift();
 
   if( !subPath ) {

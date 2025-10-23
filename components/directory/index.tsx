@@ -42,17 +42,17 @@ export default function DirTree({
                 </div>
                 <div>
                   {onFileExport && (
-                    <button onClick={() => onFileExport(currentPath)}>
+                    <button onClick={() => onFileExport(currentPath)} className="hover:cursor-pointer">
                       <FontAwesomeIcon icon={faFileExport} />
                     </button>
                   )}
                   {onFileDelete && (
-                    <button onClick={() => onFileDelete(currentPath)}>
+                    <button onClick={() => onFileDelete(currentPath)} className="hover:cursor-pointer">
                       <FontAwesomeIcon icon={faTrash} />
                     </button>
                   )}
                   {onFileSetAsContext && (
-                    <button onClick={() => onFileSetAsContext(currentPath)}>
+                    <button onClick={() => onFileSetAsContext(currentPath)} className="hover:cursor-pointer">
                       <FontAwesomeIcon icon={faFileCirclePlus} />
                     </button>
                   )}

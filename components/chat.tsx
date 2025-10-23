@@ -78,7 +78,7 @@ export default function ChatWindow({
 
   // Add doc to edited if updated. 
   useEffect(() => {
-    if( activeDocUpdated && activeDoc ) {
+    if( activeDocUpdated && activeDoc && !editedFiles.includes(activeDoc.path) ) {
       editedFilesDispatch({ type: 'add', path: activeDoc.path });
     }
   }, [activeDocUpdated])
