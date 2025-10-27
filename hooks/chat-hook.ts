@@ -1,16 +1,20 @@
-import { chat, getChatLog } from '../services/chat-service';
+import { chat, getChatLog, initializeAgent } from '../services/chat-service';
 import { ChatResponse, Conversation } from '../types';
-import { useState } from 'react';
-import { File } from '../types';
+import { useEffect, useState } from 'react';
+import { FileAction } from '../types';
 
-export default function useChat() {
+export default function useChat(projectDirectory: string) {
   const [conversation, setConversation] = useState<Conversation[]>([]);
   const [responseId, setResponseId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [chatIndex, setChatIndex] = useState<number>(0);
+  
+  useEffect(() => {
+    initializeAgent(projectDirectory);
+  }, [])
 
-  function chatRequest(userQuery: string, projectName: string, files?: File[]) {
+  function chatRequest(userQuery: string, projectName: string, fileActions: {[key: string]: FileAction}) {
     setIsLoading(true);
 
     const formData = new FormData();
@@ -19,8 +23,8 @@ export default function useChat() {
     if( responseId ) {
       formData.append('previousResponseId', responseId);
     }
-    if( files ) {
-      formData.append('doc', JSON.stringify(files)); 
+    if( Object.keys(fileActions).length > 0 ) {
+      formData.append('fileActionsTaken', JSON.stringify(fileActions)); 
     }
 
     chat(formData)

@@ -3,10 +3,10 @@ import {
   syncServerToDir,
   exportHtmlToPdf, 
   getDirContents,
-  createNewProject
+  createNewProject,
 } from '@/services/file-service';
 import { Dir, Doc } from '../types';
-import { getDirFile, addFileToDir } from '@/lib/file';
+import { getDirFile, addFileToDir, deleteFileFromDir } from '@/lib/file';
 import path from 'path';
 
 export function useManageFiles(folder: string) {
@@ -14,6 +14,27 @@ export function useManageFiles(folder: string) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isInitialized = useRef(false);
+
+  useEffect(() => {
+    loadDir();
+  }, [])
+
+  // If files change sync server.
+  useEffect(() => {
+    if ( !isInitialized.current ) { isInitialized.current = true; return; };
+    syncDirWithServer();
+  }, [dir]);
+
+  const syncDirWithServer = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await syncServerToDir(dir, folder);
+    } catch (error) {
+      setError("Failed to sync directory");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dir]);
 
   async function loadDir() {
     setIsLoading(true);
@@ -77,26 +98,16 @@ export function useManageFiles(folder: string) {
     }
   }
 
-  useEffect(() => {
-    loadDir();
-  }, [])
-
-  // If files change sync server.
-  useEffect(() => {
-    if ( !isInitialized.current ) { isInitialized.current = true; return; };
-    syncDirWithServer();
-  }, [dir]);
-
-  const syncDirWithServer = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await syncServerToDir(dir, folder);
-    } catch (error) {
-      setError("Failed to sync directory");
-    } finally {
-      setIsLoading(false);
+  function deleteFile(pathToDelete: string) {
+    const pathParts = pathToDelete.split('/').filter(part => part.length > 0);
+    if ( pathParts.length === 0 ) {
+      setError("Invalid path for deletion");
+      return;
     }
-  }, [dir]);
+
+    deleteFileFromDir(pathToDelete, dir);
+    setDir({ ...dir });
+  }
 
   async function exportFile(path: string, context?: string) {
     const formData = new FormData();
@@ -116,10 +127,12 @@ export function useManageFiles(folder: string) {
     setDir,
     getFile,
     updateFile,
+    deleteFile,
     addFile,
     isLoading,
     exportFile,
     error, 
-    addProject
+    addProject,
+    loadDir,
   }
 }

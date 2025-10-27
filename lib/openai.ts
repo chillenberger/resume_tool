@@ -1,71 +1,72 @@
-import OpenAI from "openai";
-import { ResponseInput } from "openai/resources/responses/responses.mjs";
-import { zodTextFormat } from "openai/helpers/zod";
-import { ChatData, ChatSchema, Conversation, File } from "../types";
+import { ChatSchema } from "../types";
+import { Agent, run, MCPServerStdio } from '@openai/agents';
+import path from "path";
 
-function getOpenAIClient() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
+const SYSTEM_PROMPT = `You are a professional career coach that lives inside my text editor. Use the tools to read the filesystem and answer questions based on those files. If you are unable to find any files, you can say so instead of assuming they exist.
+  You can suggest information that would be useful in helping me get hired.
 
-const SYSTEM_PROMPT = `
-# Who you are
-You are a professional career coach that lives inside my text editor. You have discussions with me and help me create and improve job application materials.
-Sometimes I will include files and we will go back and forth on improving them to help me get hired. You can make and edit files for discussion.  You can talk
-with me about the files through the message field of the schema and you can bring attention to important items in the special instructions field.
-All files will go in the files field of the schema.
+  You have discussions with me and help me create and improve job application materials.
 
-# What you do
-## You help me apply for jobs by:
-- Tailoring my resume and cover letter.
-- Help me create other application materials like email and answer application questions.
-- If the job description says I need to do something special (like use a specific word, send an email, or include a specific section), if you can do it, you will, else let me know what I need to do by placing instructions in the special instructions field of response schema.
+  You will review all the files available to you when we begin our conversation.  If a file changes during our conversation, review it and adjust your recommendations accordingly.
 
-## I will: 
-- provide data about my resume in json form.
-- provide a job description.
-- provide information about the company like the about page, project page, or careers page of their website. 
-- If I update a file I will send the whole file back to you.
-- only provide file that have html or markdown content.
-
-## You will not: 
-- Sound too formal or robotic.
-- ever use em dashes.
-- ever offer to export files.
-- ever produce files that are not markdown or html.
-
-## You will: 
-- Write like a 36 year old professional software engineer applying for jobs.
-- Follow the schema for our conversations strictly.
-
-# Response Schema
-You will respond in the following json schema:
-${ChatData}
+  - Do not sound too formal or robotic.
+  - Do not ever use em dashes.
+  - Only produce files that are markdown or html.
+  - Write like a 36 year old professional software engineer applying for jobs.
 `
 
-async function askChat(userQuery: string, previousResponseId: string | null, files: File[]) {
-  const client = getOpenAIClient();
+class MyAgent {
+  private agent: Agent<unknown, typeof ChatSchema>;
+  private mcpServer: MCPServerStdio;
+  projectName: string;
 
-  const text: ChatSchema = {
-    message: userQuery,
-    files: files,
-    special_instructions: null,
+  constructor(projectName: string) {
+    console.log("Initializing MCP server for project:", projectName);
+    this.projectName = projectName;
+    this.mcpServer = this.CreateServer();
+    this.agent = this.CreateAgent(this.mcpServer);
+
+    this.mcpServer.connect();
   }
 
-  const content = { type: "input_text", text: text };
-  
-  const input: ResponseInput = [{ role: "user", content: JSON.stringify(content) }];
+  destroy() {
+    console.log("Closing MCP server");
+    this.mcpServer.close();
+  }
 
-  const response = await client.responses.create({
-    model: "gpt-5",
-    instructions: SYSTEM_PROMPT,
-    input: input,
-    previous_response_id: previousResponseId ? previousResponseId : null,
-    text: {
-      format: zodTextFormat(ChatData, "item_schema"),
+  private CreateAgent(mcpServer: MCPServerStdio): Agent<unknown, typeof ChatSchema> {
+    const result =  new Agent({
+      name: 'FS MCP Assistant',
+      model: 'gpt-5',
+      instructions: SYSTEM_PROMPT,
+      mcpServers: [mcpServer],
+      outputType: ChatSchema,
+    });
+    return result;
+  }
+
+  private CreateServer() {
+    const projectDir = path.join(process.cwd(), '/public/projects/' + this.projectName);
+
+    return new MCPServerStdio({
+      name: 'Filesystem MCP Server, via npx',
+      fullCommand: `npx -y @modelcontextprotocol/server-filesystem ${projectDir}`,
+    })
+  }
+
+  async run(userQuery: string, previousResponseId: string | null) {
+
+    console.log("Running agent with query:", userQuery);
+
+    try {
+      return await run(this.agent, userQuery, { previousResponseId: previousResponseId ? previousResponseId : undefined });
+    } catch (error) {
+      throw error;
     }
-  });
+  }
 
-  return response;
+  // TODO: move logging from chat service to here. remove user_id from chat log, make table user project id.
+
 }
 
-export { askChat };
+export { MyAgent };

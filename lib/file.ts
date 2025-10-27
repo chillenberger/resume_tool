@@ -105,4 +105,26 @@ function addFileToDir(path: string, currentDir: Dir, doc: Doc) {
   return currentDir;
 }
 
-export{ flattenDir, expandDir, findDir, getDirFile, addFileToDir }
+function deleteFileFromDir(path: string, currentDir: Dir) {
+  let splitPath = path.split("/").filter(part => part !== "");
+  let fileName = splitPath.pop();
+
+  if (!fileName) {
+    return false;
+  }
+
+  let dir = findDir(splitPath.join("/"), currentDir);
+  if (!dir) {
+    return false;
+  }
+
+  let fileIndex = dir.children.findIndex(c => c.title === fileName && 'content' in c);
+  if (fileIndex === -1) {
+    return false;
+  }
+
+  dir.children.splice(fileIndex, 1);
+  return true;
+}
+
+export{ flattenDir, expandDir, findDir, getDirFile, addFileToDir, deleteFileFromDir }

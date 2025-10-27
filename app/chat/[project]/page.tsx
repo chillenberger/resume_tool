@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, use } from 'react';
 import ChatWindow from '@/components/chat';
-import { Doc, File } from '@/types';
+import { File } from '@/types';
 import MDEditor from '@uiw/react-md-editor';
 import rehypeSanitize from "rehype-sanitize";
 import WaterAscii from '@/components/water-ascii';

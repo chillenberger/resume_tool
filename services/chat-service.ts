@@ -1,39 +1,52 @@
 'use server'
 
-import { Conversation, File, ChatResponse, ChatSchema, ChatLog} from '../types';
-import { askChat } from '../lib/openai';
+import { Conversation, FileAction, ChatResponse, ChatSchema, ChatLog, FileActionTrack} from '../types';
+import { MyAgent } from '../lib/openai';
 import { createChatLog, getChatLogsByProject } from './db-service';
+
+let myAgentInstance: MyAgent | null = null;
+
+function initializeAgent(projectName: string) {
+  const myAgent = new MyAgent(projectName);
+  myAgentInstance = myAgent;
+}
 
 async function chat(formData: FormData): Promise<ChatResponse> {
   const userQuery = formData.get('userQuery') as string;
   const previousResponseId = formData.get('previousResponseId') as string | null;
-  const projectName = formData.get('projectName') as string | null;
-  const doc = formData.get('doc') as string | null;
-  const docJson: File | undefined = doc ? JSON.parse(doc) as File : undefined;
 
-  const resp = await askChat(userQuery, previousResponseId, docJson ? [docJson] : []);
+  const fileActions = formData.get('fileActionsTaken') as string | null;
+  const fileActionsJson: {[key: string]: FileAction} = fileActions ? JSON.parse(fileActions) as {[key: string]: FileAction} : {};
 
-  const conversationData: ChatSchema = JSON.parse(resp?.output_text || '{}');
+  if (!myAgentInstance) throw new Error("Agent not initialized");
+
+  const query = JSON.stringify({"userQuery": userQuery, "fileActionsTaken": fileActionsJson});
+
+  let response = await myAgentInstance.run(query, previousResponseId);
+  if( !response?.finalOutput ) {
+    throw new Error("No response from agent");
+  }
 
   const chatLogEntry = {
     user_id: "user-123",
-    project_id: projectName || 'default',
-    response_id: resp?.id,
+    project_id: myAgentInstance.projectName,
+    response_id: response.lastResponseId || '',
     previous_response_id: previousResponseId,
-    request_text: userQuery,
-    response_text: conversationData.message,
+    request_text: JSON.stringify(query),
+    response_text: JSON.stringify(response.finalOutput),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     deleted_at: null,
   }
 
   await createChatLog(chatLogEntry);
-
   return {
-    response: conversationData,
-    lastResponseId: resp?.id,
+    response: response.finalOutput,
+    lastResponseId: response.lastResponseId || '',
     error: false,
   }
+
+  // console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson });
 
   // await new Promise(resolve => setTimeout(resolve, 1000));
   // return testResponse;
@@ -46,7 +59,7 @@ async function getChatLog(projectName: string): Promise<Conversation[]> {
     response: {
       response: {
         message: log.response_text || '',
-        files: [],
+        file_actions: [] as FileActionTrack[],
         special_instructions: ''
       },
       lastResponseId: log.response_id,
@@ -55,21 +68,12 @@ async function getChatLog(projectName: string): Promise<Conversation[]> {
   }));
 }
 
-export {chat, getChatLog};
+export {chat, getChatLog, initializeAgent};
 
 const testResponse = {
   response: {
     message: "This is a test response",
-    files: [
-      {
-        path: "/test-folder2/resume.html",
-        content: "<html><body><h1>Test Resume</h1></body></html>"
-      },
-      {
-        path: "test-folder1/coverletter.html",
-        content: "<html><body><h1>Test Cover Letter 1</h1></body></html>"
-      }
-    ],
+    file_actions: [{path: "test/file/path", action: "created"}] as FileActionTrack[],
     special_instructions: "These are some special instructions."
   },
   lastResponseId: "test-response-id",

@@ -16,18 +16,30 @@ export type File = {
   content: string;
 }
 
+export type FileAction = 'created' | 'updated' | 'deleted';
+
+export type FileActionTrack = {
+  path: string;
+  action: FileAction;
+}
+
+export const FileActionsTrackSchema = z.object({
+  path: z.string().describe('The path to the file.'),
+  action: z.enum(['created', 'updated', 'deleted']).describe('The type of file action.')
+});
+
 export const FileSchema = z.object({
   path: z.string(),
   content: z.string(),
 })
 
-export const ChatData = z.object({
-  message: z.string(),
-  files: z.array(FileSchema).nullable(),
-  special_instructions: z.string().nullable(),
+export const ChatSchema = z.object({
+  message: z.string().describe('The recommended travel destination.'),
+  special_instructions: z.nullable(z.string()).describe('Any special instructions related to the response.'),
+  file_actions: z.array(FileActionsTrackSchema).describe('The file actions that you took.'),
 });
 
-export type ChatSchema = z.infer<typeof ChatData>;
+export type ChatExchange = z.infer<typeof ChatSchema>;
 
 export interface ChatLog {
   id?: number;
@@ -43,7 +55,7 @@ export interface ChatLog {
 }
 
 export type ChatResponse = {
-  response: ChatSchema | null | undefined;
+  response: ChatExchange;
   lastResponseId: string;
   error: boolean;
 }

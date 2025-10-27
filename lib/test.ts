@@ -1,4 +1,4 @@
-import { flattenDir, expandDir, findDir, getDirFile } from "@/lib/file";
+import { flattenDir, expandDir, findDir, getDirFile, deleteFileFromDir } from "@/lib/file";
 import {describe, expect, test} from '@jest/globals';
 import {Dir, File} from '@/types/index';
 // import path from 'path';
@@ -49,6 +49,17 @@ describe('getDirFile', () => {
   test('get existing file', () => {
     const file = getDirFile('subdir1/subsubdir1/file3.txt', TestDir);
     expect(file).toEqual({ title: 'file3.txt', content: 'This is file 3' });
+  });
+});
+
+describe('deleteFileFromDir', () => {
+  test('delete existing file', () => {
+    const dirCopy: Dir = JSON.parse(JSON.stringify(TestDir));
+    let file = getDirFile('subdir1/file2.txt', dirCopy);
+    expect(file).toEqual({ title: 'file2.txt', content: 'This is file 2' });
+    deleteFileFromDir('subdir1/file2.txt', dirCopy);
+    file = getDirFile('subdir1/file2.txt', dirCopy);
+    expect(file).toBeNull();
   });
 });
 

@@ -4,7 +4,7 @@ import {
   faTrash,
   faFileCirclePlus
 } from '@fortawesome/free-solid-svg-icons';
-import { Dir, Doc } from '../../types';
+import { Dir } from '../../types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
 interface DirTreeProps {
