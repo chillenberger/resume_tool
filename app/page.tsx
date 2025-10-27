@@ -1,5 +1,5 @@
 'use client'
-import { useManageFiles } from "@/hooks/file-manager-hook";
+import { useManageFiles } from "@/hooks/use-file-manager";
 
 
 export default function Home() {

@@ -1,12 +1,12 @@
 
-import useChat from '@/hooks/chat-hook';
+import useChat from '@/hooks/use-chat';
 import { useEffect, useReducer, useState } from 'react';
 import { Dispatch, SetStateAction } from 'react';
 import { File, FileAction } from '@/types';
 import Loader from '@/components/loader';
-import { useManageFiles} from '@/hooks/file-manager-hook';
+import { useManageFiles} from '@/hooks/use-file-manager';
 import DirTree from '@/components/directory';
-import useUrlScraper from '@/hooks/scraper-hook';
+import useUrlScraper from '@/hooks/use-scraper';
 import { flattenDir } from '@/lib/file';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
