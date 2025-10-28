@@ -125,8 +125,10 @@ export default function ChatWindow({
   }
 
  function handleChangeFile(path: string) {
+    console.log("changing file")
     const file = getFile(path);
     if( activeDoc && activeDocUpdated ) {
+      console.log("changing file saving active doc first")
       updateFile(activeDoc.path, activeDoc.content);
       editedFilesDispatch({ type: 'updated', path: activeDoc.path });
     }
@@ -195,16 +197,16 @@ export default function ChatWindow({
   return (
       <div className="flex flex-col gap-3 p-3 w-lg h-full">
         <div>
-        <DirTree dir={dir} onFileChange={handleChangeFile} onFileExport={handleExportFile} onFileDelete={handleDeleteFile}/>
-        <div className='relative'>
-          <button className="hover:cursor-pointer" type="button" disabled={isLoading} aria-label="Add Document" onClick={() => setShowFileForm(!showFileForm)}><FontAwesomeIcon icon={faAdd} /></button>
-          <form onSubmit={handleCreateDoc} className={`flex flex-col gap-2 absolute top-0 right-0 p-2 z-1 bg-black rounded-sm border-neutral-500/50 border-1 ${showFileForm ? '' : 'hidden'}`}>
-            <button type="button" className="hover:cursor-pointer absolute top-2 right-2" onClick={() => setShowFileForm(false)}>X</button>
-            <input type="text" name="path" placeholder="File Path" required/>
-            <input type="url" name="content" placeholder="File Content URL" />
-            <button type="submit" className="bg-white rounded-md px-2 py-1 hover:cursor-pointer text-black" disabled={isLoading}>Add Document</button>
-          </form>
-        </div>
+          <DirTree dir={dir} onFileChange={handleChangeFile} onFileExport={handleExportFile} onFileDelete={handleDeleteFile}/>
+          <div className='relative'>
+            <button className="hover:cursor-pointer" type="button" disabled={isLoading} aria-label="Add Document" onClick={() => setShowFileForm(!showFileForm)}><FontAwesomeIcon icon={faAdd} /></button>
+            <form onSubmit={handleCreateDoc} className={`flex flex-col gap-2 absolute top-0 right-0 p-2 z-1 bg-black rounded-sm border-neutral-500/50 border-1 ${showFileForm ? '' : 'hidden'}`}>
+              <button type="button" className="hover:cursor-pointer absolute top-2 right-2" onClick={() => setShowFileForm(false)}>X</button>
+              <input type="text" name="path" placeholder="File Path" required/>
+              <input type="url" name="content" placeholder="File Content URL" />
+              <button type="submit" className="bg-white rounded-md px-2 py-1 hover:cursor-pointer text-black" disabled={isLoading}>Add Document</button>
+            </form>
+          </div>
         </div>
         
         <form onSubmit={handleNewRequest} className=" bg-white rounded-lg p-2 relative">

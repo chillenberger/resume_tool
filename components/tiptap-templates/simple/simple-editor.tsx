@@ -72,9 +72,9 @@ import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils"
 
 // --- Styles ---
 import "@/components/tiptap-templates/simple/simple-editor.scss"
+import { File } from "@/types"
 
-// import content from "@/components/tiptap-templates/simple/data/content.json"
-// import content from "@/components/tipt/ap-templates/simple/data/resume_template"
+import { Dispatch, SetStateAction } from 'react';
 
 const MainToolbarContent = ({
   onHighlighterClick,
@@ -184,7 +184,13 @@ const MobileToolbarContent = ({
   </>
 )
 
-export function SimpleEditor({content}: {content?: string}) {
+interface SimpleEditorProps {
+  file: File;
+  updateFile: Dispatch<SetStateAction<File | null>>;
+  setActiveDocUpdated: Dispatch<SetStateAction<boolean>>;
+}
+
+export function SimpleEditor({file, updateFile, setActiveDocUpdated}: SimpleEditorProps) {
   const isMobile = useIsMobile()
   const { height } = useWindowSize()
   const [mobileView, setMobileView] = React.useState<
@@ -230,7 +236,14 @@ export function SimpleEditor({content}: {content?: string}) {
         onError: (error) => console.error("Upload failed:", error),
       }),
     ],
-    content,
+    content: file.content || '<p></p>',
+    onUpdate: () => {
+      console.log("Content updated");
+      setActiveDocUpdated(true);
+      if (!editor) return;
+      const html = editor.getHTML();
+      updateFile({path: file.path, content: html});
+    }
   })
 
   const rect = useCursorVisibility({
@@ -244,8 +257,15 @@ export function SimpleEditor({content}: {content?: string}) {
     }
   }, [isMobile, mobileView])
 
+  React.useEffect(() => {
+    if (file.content && editor && file.content !== editor.getHTML()) {
+      console.log("file content chnanged:");
+      editor.commands.setContent(file.content)
+    }
+  }, [file.content])
+
   return (
-    <div className="simple-editor-wrapper">
+    <div className="">
       <EditorContext.Provider value={{ editor }}>
         <Toolbar
           ref={toolbarRef}

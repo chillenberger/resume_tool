@@ -26,6 +26,7 @@ export function useManageFiles(folder: string) {
   }, [dir]);
 
   const syncDirWithServer = useCallback(async () => {
+    console.log("Syncing directory to server...");
     setIsLoading(true);
     try {
       await syncServerToDir(dir, folder);
