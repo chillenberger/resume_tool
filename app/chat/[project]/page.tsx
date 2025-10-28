@@ -1,17 +1,32 @@
 'use client'
 import { useState, useEffect, useRef, use } from 'react';
 import ChatWindow from '@/components/chat';
-import { File } from '@/types';
-import MDEditor from '@uiw/react-md-editor';
-import rehypeSanitize from "rehype-sanitize";
+import useSyncedFileSystem from '@/hooks/use-file-manager';
 import WaterAscii from '@/components/water-ascii';
+import FileTree from '@/components/file-tree';
+
+import { SimpleEditor } from '@/components/editor/tiptap-templates/simple/simple-editor'
 
 export default function ChatPage({params}: {params: Promise<{ project: string}>}) {
   const {project} = use(params);
-  const [viewedDoc, setViewedDoc] = useState<File | null>(null);
-  const [docUpdated, setDocUpdated] = useState<boolean>(false);
   const [waterSize, setWaterSize] = useState<{rows: number, cols: number}>({rows: 0, cols: 0});
   const waterContainerRef = useRef<HTMLDivElement>(null);
+  const {
+    allFiles,
+    loadFiles,
+    activeFile, 
+    setActiveFile, 
+    activeFileUpdated,
+    setActiveFileUpdated, 
+    editedFiles, 
+    saveActiveFile, 
+    handleDeleteFile, 
+    handleExportFile, 
+    handleCreateFile, 
+    clearEditedFiles, 
+    handleChangeActiveFile } = useSyncedFileSystem(project);
+
+  const isLoading = false;
 
   useEffect(() => {
     function updateWaterSize() {
@@ -34,29 +49,18 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
       <div className="flex flex-col">
         <h1 className="mb-2"><a href="/">Projects</a> / {project}</h1>
         <div className="p-2 bg-view-area rounded-md border border-neutral-50/20 me-8 h-[90vh]">
-          <ChatWindow project={project} setActiveDoc={setViewedDoc} activeDoc={viewedDoc} activeDocUpdated={docUpdated} setActiveDocUpdated={setDocUpdated} />
+          <div className="flex flex-col gap-3 p-3 w-lg h-full">
+            <FileTree dir={allFiles} onFileChange={handleChangeActiveFile} onFileExport={handleExportFile} onFileDelete={handleDeleteFile} onFileCreate={handleCreateFile} saveActiveFile={saveActiveFile} />
+            <ChatWindow loadDir={loadFiles} project={project} saveActiveFile={saveActiveFile} editedFiles={editedFiles} clearEditedFiles={clearEditedFiles} />
+          </div>
         </div>
       </div>
       <div className="w-full">
         <div className="w-full z-0 flex flex-col">
-          <h1 className="mb-2">{viewedDoc ? viewedDoc.path : 'Select File / Loading...'}</h1>
-          { viewedDoc && 
-          <>
-            <MDEditor 
-              value={viewedDoc.content}
-              height="90vh"
-              visibleDragbar={false}
-              onChange={(val) => {
-                setViewedDoc({ ...viewedDoc, content: val || '' });
-                setDocUpdated(true);
-              }}
-              previewOptions={{ rehypePlugins: [[rehypeSanitize]] }}
-            />
-          </>
-          }
-          {
-            !viewedDoc && <div className="h-[90vh]" ref={waterContainerRef}><WaterAscii rows={waterSize.rows} cols={waterSize.cols} /></div>
-          }
+          <h1 className="mb-2">{activeFile ? activeFile.path : 'Select File / Loading...'}</h1>
+          { activeFile ? <div className="flex h-[90vh] overflow-auto">
+            <SimpleEditor file={activeFile} updateFile={setActiveFile} setActiveDocUpdated={setActiveFileUpdated} /> 
+          </div> : <div className="h-[90vh]" ref={waterContainerRef}><WaterAscii rows={waterSize.rows} cols={waterSize.cols} /></div> }
         </div>
       </div>
     </div>

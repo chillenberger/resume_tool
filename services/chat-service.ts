@@ -18,38 +18,38 @@ async function chat(formData: FormData): Promise<ChatResponse> {
   const fileActions = formData.get('fileActionsTaken') as string | null;
   const fileActionsJson: {[key: string]: FileAction} = fileActions ? JSON.parse(fileActions) as {[key: string]: FileAction} : {};
 
-  if (!myAgentInstance) throw new Error("Agent not initialized");
+  // if (!myAgentInstance) throw new Error("Agent not initialized");
 
-  const query = JSON.stringify({"userQuery": userQuery, "fileActionsTaken": fileActionsJson});
+  // const query = JSON.stringify({"userQuery": userQuery, "fileActionsTaken": fileActionsJson});
 
-  let response = await myAgentInstance.run(query, previousResponseId);
-  if( !response?.finalOutput ) {
-    throw new Error("No response from agent");
-  }
+  // let response = await myAgentInstance.run(query, previousResponseId);
+  // if( !response?.finalOutput ) {
+  //   throw new Error("No response from agent");
+  // }
 
-  const chatLogEntry = {
-    user_id: "user-123",
-    project_id: myAgentInstance.projectName,
-    response_id: response.lastResponseId || '',
-    previous_response_id: previousResponseId,
-    request_text: JSON.stringify(query),
-    response_text: JSON.stringify(response.finalOutput),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    deleted_at: null,
-  }
+  // const chatLogEntry = {
+  //   user_id: "user-123",
+  //   project_id: myAgentInstance.projectName,
+  //   response_id: response.lastResponseId || '',
+  //   previous_response_id: previousResponseId,
+  //   request_text: JSON.stringify(query),
+  //   response_text: JSON.stringify(response.finalOutput),
+  //   created_at: new Date().toISOString(),
+  //   updated_at: new Date().toISOString(),
+  //   deleted_at: null,
+  // }
 
-  await createChatLog(chatLogEntry);
-  return {
-    response: response.finalOutput,
-    lastResponseId: response.lastResponseId || '',
-    error: false,
-  }
+  // await createChatLog(chatLogEntry);
+  // return {
+  //   response: response.finalOutput,
+  //   lastResponseId: response.lastResponseId || '',
+  //   error: false,
+  // }
 
-  // console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson });
+  console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson });
 
-  // await new Promise(resolve => setTimeout(resolve, 1000));
-  // return testResponse;
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return testResponse;
 }
 
 async function getChatLog(projectName: string): Promise<Conversation[]> {

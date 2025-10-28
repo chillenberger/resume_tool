@@ -1,15 +1,32 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+// hook to manage file operations: load, add, update, delete, export
+// maintains local state of directory and files, syncs with server
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { 
   syncServerToDir,
   exportHtmlToPdf, 
   getDirContents,
   createNewProject,
 } from '@/services/file-service';
-import { Dir, Doc } from '../types';
+import { Dir, Doc, File, FileAction } from '../types';
 import { getDirFile, addFileToDir, deleteFileFromDir } from '@/lib/file';
 import path from 'path';
+import { flattenDir } from '@/lib/file';
 
-export function useManageFiles(folder: string) {
+type ManagedFileSystem = {
+  dir: Dir;
+  setDir: React.Dispatch<React.SetStateAction<Dir>>;
+  getFile: (path: string) => Doc | undefined;
+  updateFile: (path: string, content: string) => void;
+  deleteFile: (path: string) => void;
+  addFile: (path: string, content: string) => void;
+  exportFile: (path: string, context?: string) => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+  addProject: (projectName: string) => void;
+  loadDir: () => void;
+}
+
+function useManageFiles(folder: string): ManagedFileSystem {
   const [dir, setDir] = useState<Dir>({ title: folder, children: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,3 +154,144 @@ export function useManageFiles(folder: string) {
     loadDir,
   }
 }
+
+
+function manageEditedFilesReducer(state: { [key: string]: FileAction } = {}, action?: { type: FileAction | 'clear', path: string }) {
+  if (!action) {
+    return state;
+  }
+  if (!action.path && action.type !== 'clear') {
+    throw new Error("path must be provided for update action");
+  }
+
+  switch(action.type) {
+    case 'created':
+      state[action.path] = 'created';
+      return state;
+    case 'deleted':
+      if ( state[action.path] === 'created' ) {
+        delete state[action.path];
+        return state;
+      }
+      state[action.path] = 'deleted';
+      return state;
+    case 'updated':
+      if ( state[action.path] === 'created' ) {
+        return state;
+      }
+      state[action.path] = 'updated';
+      return state;
+    case 'clear': 
+      return {};
+  }
+}
+
+export default function useSyncedFileSystem(folder: string) {
+  const managedFileSystem = useManageFiles(folder);
+  const [activeFile, setActiveFile] = useState<File | null>(null);
+  const [activeFileUpdated, setActiveFileUpdated] = useState<boolean>(false);
+  const [editedFiles, editedFilesDispatch] = useReducer(manageEditedFilesReducer, {});
+  const [seededEditedFiles, setSeededEditedFiles] = useState<boolean>(false);
+
+  // Add file to edited if updated. 
+  useEffect(() => {
+    if (activeFileUpdated && activeFile) {
+      editedFilesDispatch({ type: 'updated', path: activeFile.path });
+    }
+  }, [activeFileUpdated])
+
+  // On initial load, set edited files to all files in dir.
+  useEffect(() => {
+    if( !seededEditedFiles && managedFileSystem.dir.children.length > 0 ) {
+      console.log("Seeding edited files from loaded dir...: ", managedFileSystem.dir);
+      setSeededEditedFiles(true);
+      let copyEditedFiles = { ...editedFiles };
+      let files = flattenDir(managedFileSystem.dir);
+      files.forEach(file => {
+        if( !(file.path in copyEditedFiles) ) {
+          editedFilesDispatch({ type: 'created', path: file.path });
+        }
+      });
+    }
+  }, [managedFileSystem.dir])
+
+  function saveActiveFile() {
+    if ( !activeFile || !activeFileUpdated ) return;
+    managedFileSystem.updateFile(activeFile.path, activeFile.content);
+    setActiveFileUpdated(false);
+  }
+
+  function handleChangeActiveFile(path: string) {
+    console.log("Changing active file to: ", path);
+    const file = managedFileSystem.getFile(path);
+    if( activeFile && activeFileUpdated ) {
+      managedFileSystem.updateFile(activeFile.path, activeFile.content);
+      editedFilesDispatch({ type: 'updated', path: activeFile.path });
+    }
+
+    if( !file ) return;
+    setActiveFile({ path, content: file.content });
+    setActiveFileUpdated(false);
+  }
+
+  function handleDeleteFile(path: string) {
+    console.log("Deleting file: ", path);
+    if( activeFile?.path === path ) {
+      setActiveFile(null);
+    }
+
+    managedFileSystem.deleteFile(path);
+    editedFilesDispatch({ type: 'deleted', path });
+  }
+
+  function handleExportFile(path: string) {
+    console.log("Exporting file: ", path);
+    if( path === activeFile?.path && activeFileUpdated ) {
+      managedFileSystem.updateFile(activeFile.path, activeFile.content);
+      setActiveFileUpdated(false);
+    }
+
+    const file = managedFileSystem.getFile(path);
+    if( !file ) {
+      console.error("File not found for export: ", path);
+      return;
+    }
+
+    managedFileSystem.exportFile(path, file.content);
+  }
+
+  function handleCreateFile(path: string, content: string) {
+    console.log("Creating file: ", path, content);
+    if( activeFile && activeFileUpdated ) {
+      managedFileSystem.updateFile(activeFile.path, activeFile.content);
+    }
+
+    managedFileSystem.addFile(path, content);
+    editedFilesDispatch({ type: 'created', path: path });
+    setActiveFile({ path, content });
+  }
+
+  function clearEditedFiles() {
+    console.log("Clearing edited files");
+    editedFilesDispatch({ type: 'clear', path: '' });
+  }
+
+  return {
+    allFiles: managedFileSystem.dir,
+    loadFiles: managedFileSystem.loadDir,
+    activeFile,
+    setActiveFile,
+    activeFileUpdated,
+    setActiveFileUpdated,
+    editedFiles,
+    clearEditedFiles,
+    saveActiveFile,
+    handleChangeActiveFile,
+    handleDeleteFile,
+    handleExportFile,
+    handleCreateFile,
+  }
+
+}
+
+export { useManageFiles };
