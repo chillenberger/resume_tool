@@ -6,7 +6,12 @@ import WaterAscii from '@/components/water-ascii';
 import FileTree from '@/components/file-tree';
 import path from 'path';
 
-import { DisplayEditor, useSimpleMarkdownEditor, useSimpleHtmlEditor } from '@/components/editor/tiptap-templates/simple/simple-editor'
+import { DisplayEditor, useSimpleMarkdownEditor } from '@/components/tiptap-editor/tiptap-templates/simple/simple-editor'
+
+import dynamic from 'next/dynamic';
+import HtmlEditor from '@/components/ck-editor/ck-editor';
+
+const DisplayCKEditor = dynamic( () => import( '@/components/ck-editor/ck-editor-display' ), { ssr: false } );
 
 export default function ChatPage({params}: {params: Promise<{ project: string}>}) {
   const {project} = use(params);
@@ -26,7 +31,7 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
     handleChangeActiveFile } = useSyncedFileSystem(project);
 
   const markdownEditor = useSimpleMarkdownEditor();
-  const htmlEditor = useSimpleHtmlEditor();
+  const htmlEditor = HtmlEditor();
 
   const isLoading = false;
 
@@ -49,19 +54,10 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
 
   function getContentTypeFromPath(filePath: string): 'html' | 'markdown' {
     const ext = path.extname(filePath).toLowerCase();
-    if (ext === '.md' || ext === '.markdown') {
+    if (ext === '.md' || ext === '.markdown' || ext === '.txt') {
       return 'markdown';
     }
     return 'html';
-  }
-
-  function getEditor() {
-    if (!activeFile) return null;
-    const contentType = getContentTypeFromPath(activeFile!.path);
-    if (contentType === 'markdown') {
-      return markdownEditor;
-    }
-    return htmlEditor;
   }
 
   function extractFileContent() {
@@ -70,20 +66,18 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
     if (contentType === 'markdown') {
       return markdownEditor?.getMarkdown() || '';
     } else {
-      return htmlEditor?.getHTML() || '';
+      return htmlEditor.current.getData() || '';
     }
   }
 
   useEffect(() => {
-    console.log("Active file changed:", activeFile?.path);
-    const editor = getEditor();
-    if (editor && activeFile) {
-      const contentType = getContentTypeFromPath(activeFile.path);
-      if (contentType === 'markdown') {
-        editor.commands.setContent(activeFile.content, {contentType: 'markdown' });
-      } else {
-        editor.commands.setContent(activeFile.content, {contentType: 'html' });
-      }
+    const contentType = getContentTypeFromPath(activeFile?.path || '');
+    if (contentType === 'markdown' && markdownEditor) {
+      const markdownContent = activeFile ? activeFile.content : '';
+      markdownEditor?.commands.setContent(markdownContent);
+    } else if (contentType === 'html' && htmlEditor.current) {
+      const htmlContent = activeFile ? activeFile.content : '';
+      htmlEditor.current.setData(htmlContent);
     }
   }, [activeFile]);
 
@@ -102,7 +96,7 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
         <div className="w-full z-0 flex flex-col">
           <h1 className="mb-2">{activeFile ? activeFile.path : 'Select File / Loading...'}</h1>
           { activeFile ? <div className="flex h-[90vh] overflow-hidden">
-            <DisplayEditor editor={getEditor()} editorType={getContentTypeFromPath(activeFile.path)} /> 
+            { getContentTypeFromPath(activeFile.path) === 'markdown' ? <DisplayEditor editor={markdownEditor} editorType={getContentTypeFromPath(activeFile.path)} /> :  <DisplayCKEditor editorRef={htmlEditor} defaultContent={activeFile.content}/> }
           </div> : <div className="h-[90vh]" ref={waterContainerRef}><WaterAscii rows={waterSize.rows} cols={waterSize.cols} /></div> }
         </div>
       </div>
