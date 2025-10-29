@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { EditorContent, EditorContext, useEditor } from "@tiptap/react"
+import path from "path"
 
 // --- Tiptap Core Extensions ---
 import { StarterKit } from "@tiptap/starter-kit"
@@ -13,6 +14,7 @@ import { Highlight } from "@tiptap/extension-highlight"
 import { Subscript } from "@tiptap/extension-subscript"
 import { Superscript } from "@tiptap/extension-superscript"
 import { Selection } from "@tiptap/extensions"
+import { Markdown }from "@tiptap/markdown"
 
 // --- UI Primitives ---
 import { Button } from "@/components/editor/tiptap-ui-primitive/button"
@@ -66,6 +68,7 @@ import { useCursorVisibility } from "@/hooks/use-cursor-visibility"
 
 // --- Components ---
 import { ThemeToggle } from "@/components/editor/tiptap-templates/simple/theme-toggle"
+import CustomElement from "@/components/editor/tiptap-templates/simple/custom-element";
 
 // --- Lib ---
 import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils"
@@ -75,6 +78,8 @@ import "@/components/editor/tiptap-templates/simple/simple-editor.scss"
 import { File } from "@/types"
 
 import { Dispatch, SetStateAction } from 'react';
+import { get } from "http"
+import { Editor } from "@tiptap/core";
 
 const MainToolbarContent = ({
   onHighlighterClick,
@@ -184,13 +189,12 @@ const MobileToolbarContent = ({
   </>
 )
 
-interface SimpleEditorProps {
-  file: File;
-  updateFile: Dispatch<SetStateAction<File | null>>;
-  setActiveDocUpdated: Dispatch<SetStateAction<boolean>>;
+interface DisplayEditorProps {
+  editor?: Editor | null;
+  editorType?: 'markdown' | 'html';
 }
 
-export function SimpleEditor({file, updateFile, setActiveDocUpdated}: SimpleEditorProps) {
+function DisplayEditor({editor, editorType}: DisplayEditorProps) {
   const isMobile = useIsMobile()
   const { height } = useWindowSize()
   const [mobileView, setMobileView] = React.useState<
@@ -198,7 +202,91 @@ export function SimpleEditor({file, updateFile, setActiveDocUpdated}: SimpleEdit
   >("main")
   const toolbarRef = React.useRef<HTMLDivElement>(null)
 
-  const editor = useEditor({
+  const rect = useCursorVisibility({
+    editor: editor,
+    overlayHeight: toolbarRef.current?.getBoundingClientRect().height ?? 0,
+  })
+
+  React.useEffect(() => {
+    if (!isMobile && mobileView !== "main") {
+      setMobileView("main")
+    }
+  }, [isMobile, mobileView])
+
+
+  return (
+    <div className="">
+      { editorType === 'html' && editor &&
+      <EditorContext.Provider value={{ editor }}>
+        <Toolbar
+          ref={toolbarRef}
+          style={{
+            ...(isMobile
+              ? {
+                  bottom: `calc(100% - ${height - rect.y}px)`,
+                }
+              : {}),
+          }}
+        >
+          {mobileView === "main" ? (
+            <MainToolbarContent
+              onHighlighterClick={() => setMobileView("highlighter")}
+              onLinkClick={() => setMobileView("link")}
+              isMobile={isMobile}
+            />
+          ) : (
+            <MobileToolbarContent
+              type={mobileView === "highlighter" ? "highlighter" : "link"}
+              onBack={() => setMobileView("main")}
+            />
+          )}
+        </Toolbar>
+
+        <EditorContent
+          editor={editor}
+          role="presentation"
+          className="simple-editor-content overflow-auto"
+        />
+      </EditorContext.Provider>
+}
+{ editorType === 'markdown' && editor &&
+    <EditorContent
+      editor={editor}
+      role="presentation"
+      className="simple-editor-content overflow-auto"
+    />
+    }
+    </div>
+  )
+}
+
+function useSimpleMarkdownEditor() {
+  const markdownEditor = useEditor({
+    immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
+    editorProps: {
+      attributes: {
+        autocomplete: "off",
+        autocorrect: "off",
+        autocapitalize: "off",
+        "aria-label": "Main content area, start typing to enter text.",
+        class: "simple-editor",
+      },
+    },
+    extensions: [
+      StarterKit,
+      Markdown
+    ],
+
+    contentType: "markdown",
+  })
+
+  return markdownEditor;
+}
+
+function useSimpleHtmlEditor() {
+
+  const htmlEditor = useEditor({
     immediatelyRender: false,
     shouldRerenderOnTransaction: false,
     editorProps: {
@@ -234,69 +322,12 @@ export function SimpleEditor({file, updateFile, setActiveDocUpdated}: SimpleEdit
         limit: 3,
         upload: handleImageUpload,
         onError: (error) => console.error("Upload failed:", error),
-      }),
+      })
     ],
-    content: file.content || '<p></p>',
-    onUpdate: () => {
-      console.log("Content updated");
-      setActiveDocUpdated(true);
-      if (!editor) return;
-      const html = editor.getHTML();
-      updateFile({path: file.path, content: html});
-    }
+    contentType: "html",
   })
 
-  const rect = useCursorVisibility({
-    editor,
-    overlayHeight: toolbarRef.current?.getBoundingClientRect().height ?? 0,
-  })
-
-  React.useEffect(() => {
-    if (!isMobile && mobileView !== "main") {
-      setMobileView("main")
-    }
-  }, [isMobile, mobileView])
-
-  React.useEffect(() => {
-    if (file.content && editor && file.content !== editor.getHTML()) {
-      console.log("file content chnanged:");
-      editor.commands.setContent(file.content)
-    }
-  }, [file.content])
-
-  return (
-    <div className="">
-      <EditorContext.Provider value={{ editor }}>
-        <Toolbar
-          ref={toolbarRef}
-          style={{
-            ...(isMobile
-              ? {
-                  bottom: `calc(100% - ${height - rect.y}px)`,
-                }
-              : {}),
-          }}
-        >
-          {mobileView === "main" ? (
-            <MainToolbarContent
-              onHighlighterClick={() => setMobileView("highlighter")}
-              onLinkClick={() => setMobileView("link")}
-              isMobile={isMobile}
-            />
-          ) : (
-            <MobileToolbarContent
-              type={mobileView === "highlighter" ? "highlighter" : "link"}
-              onBack={() => setMobileView("main")}
-            />
-          )}
-        </Toolbar>
-
-        <EditorContent
-          editor={editor}
-          role="presentation"
-          className="simple-editor-content"
-        />
-      </EditorContext.Provider>
-    </div>
-  )
+  return htmlEditor;
 }
+
+export { DisplayEditor, useSimpleMarkdownEditor, useSimpleHtmlEditor }

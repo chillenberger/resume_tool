@@ -188,7 +188,7 @@ function manageEditedFilesReducer(state: { [key: string]: FileAction } = {}, act
 
 export default function useSyncedFileSystem(folder: string) {
   const managedFileSystem = useManageFiles(folder);
-  const [activeFile, setActiveFile] = useState<File | null>(null);
+  const [activeFile, _setActiveFile] = useState<File | null>(null);
   const [activeFileUpdated, setActiveFileUpdated] = useState<boolean>(false);
   const [editedFiles, editedFilesDispatch] = useReducer(manageEditedFilesReducer, {});
   const [seededEditedFiles, setSeededEditedFiles] = useState<boolean>(false);
@@ -203,7 +203,6 @@ export default function useSyncedFileSystem(folder: string) {
   // On initial load, set edited files to all files in dir.
   useEffect(() => {
     if( !seededEditedFiles && managedFileSystem.dir.children.length > 0 ) {
-      console.log("Seeding edited files from loaded dir...: ", managedFileSystem.dir);
       setSeededEditedFiles(true);
       let copyEditedFiles = { ...editedFiles };
       let files = flattenDir(managedFileSystem.dir);
@@ -218,26 +217,30 @@ export default function useSyncedFileSystem(folder: string) {
   function saveActiveFile() {
     if ( !activeFile || !activeFileUpdated ) return;
     managedFileSystem.updateFile(activeFile.path, activeFile.content);
-    setActiveFileUpdated(false);
+    editedFilesDispatch({ type: 'updated', path: activeFile.path });
   }
 
-  function handleChangeActiveFile(path: string) {
-    console.log("Changing active file to: ", path);
+  function setActiveFileContent(content: string) {
+    if ( !activeFile ) return;
+    _setActiveFile({ ...activeFile, content });
+    setActiveFileUpdated(true);
+  }
+
+  function handleChangeActiveFile(path: string, currentContent?: string) {
     const file = managedFileSystem.getFile(path);
-    if( activeFile && activeFileUpdated ) {
-      managedFileSystem.updateFile(activeFile.path, activeFile.content);
+    if ( activeFile && currentContent ) {
+      managedFileSystem.updateFile(activeFile.path, currentContent);
       editedFilesDispatch({ type: 'updated', path: activeFile.path });
     }
 
     if( !file ) return;
-    setActiveFile({ path, content: file.content });
+    _setActiveFile({ path, content: file.content });
     setActiveFileUpdated(false);
   }
 
   function handleDeleteFile(path: string) {
-    console.log("Deleting file: ", path);
     if( activeFile?.path === path ) {
-      setActiveFile(null);
+      _setActiveFile(null);
     }
 
     managedFileSystem.deleteFile(path);
@@ -245,7 +248,6 @@ export default function useSyncedFileSystem(folder: string) {
   }
 
   function handleExportFile(path: string) {
-    console.log("Exporting file: ", path);
     if( path === activeFile?.path && activeFileUpdated ) {
       managedFileSystem.updateFile(activeFile.path, activeFile.content);
       setActiveFileUpdated(false);
@@ -261,18 +263,16 @@ export default function useSyncedFileSystem(folder: string) {
   }
 
   function handleCreateFile(path: string, content: string) {
-    console.log("Creating file: ", path, content);
     if( activeFile && activeFileUpdated ) {
       managedFileSystem.updateFile(activeFile.path, activeFile.content);
     }
 
     managedFileSystem.addFile(path, content);
     editedFilesDispatch({ type: 'created', path: path });
-    setActiveFile({ path, content });
+    _setActiveFile({ path, content });
   }
 
   function clearEditedFiles() {
-    console.log("Clearing edited files");
     editedFilesDispatch({ type: 'clear', path: '' });
   }
 
@@ -280,12 +280,12 @@ export default function useSyncedFileSystem(folder: string) {
     allFiles: managedFileSystem.dir,
     loadFiles: managedFileSystem.loadDir,
     activeFile,
-    setActiveFile,
+    setActiveFileContent,
+    saveActiveFile,
     activeFileUpdated,
     setActiveFileUpdated,
     editedFiles,
     clearEditedFiles,
-    saveActiveFile,
     handleChangeActiveFile,
     handleDeleteFile,
     handleExportFile,

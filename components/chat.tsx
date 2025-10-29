@@ -37,7 +37,6 @@ export default function ChatWindow({
   useEffect(() => {
     const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.file_actions;
     if ( !lastChatResponseFiles ) return;
-
     loadDir();
   }, [conversation])
 
