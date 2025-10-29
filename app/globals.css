@@ -39,3 +39,7 @@ textarea.chat-input {
   display: block;
   width: 100%;
 }
+
+.ck-editor__editable {
+  min-height: 90vh;
+}
