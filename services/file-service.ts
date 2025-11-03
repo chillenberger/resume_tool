@@ -6,6 +6,7 @@ import path from 'path';
 import { Dir, Doc } from '../types';
 import { readFile, readdir } from 'fs';
 import exec from 'child_process';
+import {flattenDir} from '@/lib/file';
 
 const rootDir = path.join(process.cwd(), 'public', 'projects');
 const outputRoot = path.join(process.cwd(), 'public', 'outputs');
@@ -118,7 +119,7 @@ async function syncServerToDir(dir: Dir, folder: string) {
 
 async function updateFile(doc: Doc, folder: string) {
   const filePath = path.join(rootDir, folder, doc.title);
-  console.log(`updatingFile at ${filePath}`);
+  console.log(`updatingFile at ${filePath} with: ${doc.content}`);
   try {
     writeFileSync(filePath, doc.content, { flag: 'w' });
   } catch (error) {

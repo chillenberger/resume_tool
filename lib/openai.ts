@@ -59,13 +59,28 @@ class MyAgent {
     console.log("Running agent with query:", userQuery);
 
     try {
-      return await run(this.agent, userQuery, { previousResponseId: previousResponseId ? previousResponseId : undefined });
+      const stream = await run(this.agent, userQuery, { previousResponseId: previousResponseId ? previousResponseId : undefined, stream: true });
+      for await (const event of stream) {
+        console.log("Stream event: ", event.type);
+        // // these are the raw events from the model
+        // if (event.type === 'raw_model_stream_event') {
+        //   console.log(`${event.type} %o`, event.data);
+        // }
+        // // agent updated events
+        // if (event.type === 'agent_updated_stream_event') {
+        //   console.log(`${event.type} %s`, event.agent.name);
+        // }
+        // // Agent SDK specific events
+        // if (event.type === 'run_item_stream_event') {
+        //   console.log(`${event.type} %o`, event.item);
+        // }
+      }
+      return stream;
     } catch (error) {
       throw error;
     }
   }
 
-  // TODO: move logging from chat service to here. remove user_id from chat log, make table user project id.
 
 }
 

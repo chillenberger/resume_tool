@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, use } from 'react';
+import { useState, useEffect, useRef, use, useReducer } from 'react';
 import ChatWindow from '@/components/chat';
 import useManageFileState from '@/hooks/use-file-manager';
 import WaterAscii from '@/components/water-ascii';
@@ -13,11 +13,25 @@ import useCKHtmlEditor from '@/components/ck-editor/ck-editor';
 
 const DisplayCKEditor = dynamic( () => import( '@/components/ck-editor/ck-editor-display' ), { ssr: false } );
 
+type ActiveFileActions = "set" | "updated" | "none";
+
+function activeFileReducer(state: ActiveFileActions, action: 'reset' | 'next') {
+  switch(action) {
+    case 'reset':
+      return "none";
+    case 'next':
+      if ( state === 'none' ) return 'set';
+      if ( state === 'set' ) return 'updated';
+      return state;
+  }
+}
+
 export default function ChatPage({params}: {params: Promise<{ project: string}>}) {
   const {project} = use(params);
   const [waterSize, setWaterSize] = useState<{rows: number, cols: number}>({rows: 0, cols: 0});
   const waterContainerRef = useRef<HTMLDivElement>(null);
-  const [activeFileUpdated, setActiveFileUpdated] = useState<boolean>(false);
+  const [activeFileState, activeFileStateDispatch] = useReducer(activeFileReducer, "none");
+
   const {
     allFiles,
     loadFiles,
@@ -31,8 +45,8 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
     clearEditedFiles,
   } = useManageFileState(project);
 
-  const markdownEditor = useTipTapMarkdownEditor(() => setActiveFileUpdated(true));
-  const htmlEditor = useCKHtmlEditor(() => setActiveFileUpdated(true));
+  const markdownEditor = useTipTapMarkdownEditor(() => activeFileStateDispatch('next'));
+  const htmlEditor = useCKHtmlEditor(() => activeFileStateDispatch('next'));
 
   const isLoading = false;
 
@@ -65,7 +79,6 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
     if (!activeFile) return '';
     const contentType = getContentTypeFromPath(activeFile.path);
     if (contentType === 'markdown') {
-      console.log("extracting markdown content");
       return markdownEditor?.getMarkdown() || '';
     } else {
       return htmlEditor?.editorRef.current?.getData() || '';
@@ -85,48 +98,49 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
   }, [activeFile]);
 
   function handleSwitchActiveFile(path: string) {
-    if ( activeFileUpdated ) {
+    if ( activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
-      setActiveFileUpdated(false);
     }
+
+    activeFileStateDispatch('reset');
     switchActiveFileTo(path);
   }
 
   function handleOnFileDelete(path: string) {
-    if ( path === activeFile?.path && activeFileUpdated ) {
+    if ( path === activeFile?.path && activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
       switchActiveFileTo();
     }
-    setActiveFileUpdated(false);
+    activeFileStateDispatch('reset');
     deleteFile(path);
   }
 
   function handleOnFileCreate(path: string) {
-    if ( activeFileUpdated ) {
+    if ( activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
     }
+    activeFileStateDispatch('reset');
     createFile(path, 'New file content');
-    setActiveFileUpdated(false);
   }
 
   function handleOnFileExport(path: string) {
-    if( path === activeFile?.path && activeFileUpdated ) {
+    if( path === activeFile?.path && activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
     }
+    activeFileStateDispatch('reset');
     exportFile(path);
-    setActiveFileUpdated(false);
   }
 
   function handleOnChatRequest() {
-    if ( activeFileUpdated ) {
+    if ( activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
-    } 
-    setActiveFileUpdated(false);
+    }
+    activeFileStateDispatch('reset');
   }
 
   return (

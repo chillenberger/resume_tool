@@ -31,6 +31,7 @@ function useManageFiles(folder: string): ManagedFileSystem {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isInitialized = useRef(false);
+  const [syncLockout, setSyncLockout] = useState<number>(0);
 
   useEffect(() => {
     loadDir();
@@ -39,11 +40,14 @@ function useManageFiles(folder: string): ManagedFileSystem {
   // If files change sync server.
   useEffect(() => {
     if ( !isInitialized.current ) { isInitialized.current = true; return; };
-    syncDirWithServer();
+    if ( syncLockout > 0 ) {
+      setSyncLockout(syncLockout - 1);
+    } else {
+      syncDirWithServer();
+    }
   }, [dir]);
 
   const syncDirWithServer = useCallback(async () => {
-    console.log("Syncing directory to server...");
     setIsLoading(true);
     try {
       await syncServerToDir(dir, folder);
@@ -55,10 +59,11 @@ function useManageFiles(folder: string): ManagedFileSystem {
   }, [dir]);
 
   async function loadDir() {
+    setSyncLockout(syncLockout + 1);
     setIsLoading(true);
     try {
-      const dir: Dir = await getDirContents(folder);
-      setDir(dir);
+      const newContents: Dir = await getDirContents(folder);
+      setDir(newContents);
     } catch (error) {
       setError("Failed to fetch directory");
     } finally {
@@ -214,6 +219,17 @@ export default function useManageFileState(folder: string) {
     editedFilesDispatch({ type, path: folder + '/' + path });
   }
 
+  // update active file if dir updated;
+  useEffect(() => {
+    if ( activeFile ) {
+      const updatedDoc = managedFileSystem.getFile(activeFile.path);
+      if ( updatedDoc ) {
+        optimisticActiveFile.current = { path: updatedDoc.title, content: updatedDoc.content };
+        _setActiveFile(optimisticActiveFile.current);
+      }
+    }
+  }, [managedFileSystem.dir])
+
   // On initial load, set edited files to all files in dir.
   useEffect(() => {
     if( !initialized && managedFileSystem.dir.children.length > 0 ) {
@@ -239,7 +255,6 @@ export default function useManageFileState(folder: string) {
   function switchActiveFileTo(path?: string) {
     const doc = path ? managedFileSystem.getFile(path) : null;
     optimisticActiveFile.current = doc && path ? { path, content: doc.content } : null;
-    console.log("switchActiveFileTo:", path, optimisticActiveFile.current, doc);
     _setActiveFile(optimisticActiveFile.current);
   }
 
