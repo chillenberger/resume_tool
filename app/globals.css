@@ -40,6 +40,15 @@ textarea.chat-input {
   width: 100%;
 }
 
+.ck-editor {
+  height: 100% !important;
+}
+
+.ck-editor__main {
+  height: 100%;
+}
+
 .ck-editor__editable {
-  min-height: 90vh;
+  height: 100%;
+  overflow: auto;
 }

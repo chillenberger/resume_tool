@@ -89,6 +89,7 @@ async function getDirContents(folder: string): Promise<Dir> {
 async function syncServerToDir(dir: Dir, folder: string) {
   const serverDir = await getDirContents(folder);
 
+  // Delete files that are on server but not in dir
   for ( const serverFile of serverDir.children ) {
     const file = dir.children.find(f => f.title === serverFile.title);
     if ( !file ) {
@@ -98,6 +99,7 @@ async function syncServerToDir(dir: Dir, folder: string) {
     }
   }
 
+  // Update or add files from dir to server
   for ( const file of dir.children ) {
     if ( 'content' in file ) {
       await updateFile(file, folder);
@@ -116,6 +118,7 @@ async function syncServerToDir(dir: Dir, folder: string) {
 
 async function updateFile(doc: Doc, folder: string) {
   const filePath = path.join(rootDir, folder, doc.title);
+  console.log(`updatingFile at ${filePath}`);
   try {
     writeFileSync(filePath, doc.content, { flag: 'w' });
   } catch (error) {

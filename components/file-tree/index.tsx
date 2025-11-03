@@ -19,7 +19,6 @@ interface FileTreeProps {
   onFileDelete?: (path: string) => void;
   onFileSetAsContext?: (path: string) => void;
   onFileCreate: (path: string, content: string) => void;
-  saveActiveFile: () => void;
 }
 
 export default function FileTree({ 
@@ -30,7 +29,6 @@ export default function FileTree({
   onFileDelete, 
   onFileSetAsContext,
   onFileCreate,
-  saveActiveFile,
 }: FileTreeProps) {
   const [showFileForm, setShowFileForm] = useState(false);
   const { urlToDoc, isLoading: scrapeLoading, error: scrapeError } = useUrlScraper();
@@ -47,8 +45,6 @@ export default function FileTree({
     const path = formData.get('path') as string;
 
     event.currentTarget.reset();
-
-    saveActiveFile();
 
     let newFile: File | undefined;
 
@@ -69,7 +65,6 @@ export default function FileTree({
         onFileExport={onFileExport}
         onFileDelete={onFileDelete}
         onFileSetAsContext={onFileSetAsContext}
-        saveActiveFile={saveActiveFile}
       />
       <div className='relative'>
         <button className="hover:cursor-pointer" type="button" disabled={isLoading} aria-label="Add Document" onClick={() => setShowFileForm(!showFileForm)}><FontAwesomeIcon icon={faAdd} /></button>
@@ -92,7 +87,6 @@ function RecurseFileTree(
   onFileExport, 
   onFileDelete, 
   onFileSetAsContext,
-  saveActiveFile,
 }: {
   dir: Dir;
   path?: string;
@@ -100,7 +94,6 @@ function RecurseFileTree(
   onFileExport?: (path: string) => void;
   onFileDelete?: (path: string) => void;
   onFileSetAsContext?: (path: string) => void;
-  saveActiveFile: () => void;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -109,7 +102,7 @@ function RecurseFileTree(
             {
               const currentPath = path ? path + '/' + item.title : item.title;
             return (
-            <div key={key} className="ml-4">
+            <div key={key} className="ml-4" attr-data={currentPath}>
               {'content' in item && (
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -145,7 +138,6 @@ function RecurseFileTree(
                   onFileExport={onFileExport}
                   onFileDelete={onFileDelete}
                   onFileSetAsContext={onFileSetAsContext}
-                  saveActiveFile={saveActiveFile}
                 />
               )}
             </div>)}

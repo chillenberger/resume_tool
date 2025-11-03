@@ -22,6 +22,8 @@ async function chat(formData: FormData): Promise<ChatResponse> {
 
   const query = JSON.stringify({"userQuery": userQuery, "fileActionsTaken": fileActionsJson});
 
+  console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson });
+
   let response = await myAgentInstance.run(query, previousResponseId);
   if( !response?.finalOutput ) {
     throw new Error("No response from agent");
@@ -48,8 +50,6 @@ async function chat(formData: FormData): Promise<ChatResponse> {
     error: false,
   }
 
-  // console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson });
-
   // await new Promise(resolve => setTimeout(resolve, 1000));
   // return testResponse;
 }
@@ -75,7 +75,7 @@ export {chat, getChatLog, initializeAgent};
 const testResponse = {
   response: {
     message: "This is a test response",
-    file_actions: [{path: "test/file/path", action: "created"}] as FileActionTrack[],
+    file_actions: [{path: "test/chat-new.md", action: "created"}] as FileActionTrack[],
     special_instructions: "These are some special instructions."
   },
   lastResponseId: "test-response-id",

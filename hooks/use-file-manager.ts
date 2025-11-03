@@ -15,7 +15,7 @@ import { flattenDir } from '@/lib/file';
 type ManagedFileSystem = {
   dir: Dir;
   setDir: React.Dispatch<React.SetStateAction<Dir>>;
-  getFile: (path: string) => Doc | undefined;
+  getFile: (path: string) => Doc | null;
   updateFile: (path: string, content: string) => void;
   deleteFile: (path: string) => void;
   addFile: (path: string, content: string) => void;
@@ -66,13 +66,14 @@ function useManageFiles(folder: string): ManagedFileSystem {
     }
   }
 
-  function getFile(path: string): Doc | undefined {
+  function getFile(path: string): Doc | null {
     try {
       let doc = getDirFile(path, dir);
-      return doc ? doc : undefined;
+      return doc;
     } catch (error) {
       setError("Failed to fetch file");
     }
+    return null;
   }
 
   async function updateFile(filePath: string, content: string) {
@@ -83,6 +84,7 @@ function useManageFiles(folder: string): ManagedFileSystem {
   }
 
   function addFile(fullPath: string, content: string) {
+    console.log("addFile, input: ", fullPath, content);
     const fileName = path.basename(fullPath);
     if ( !fileName ) throw new Error("Invalid file name");
     
@@ -93,6 +95,7 @@ function useManageFiles(folder: string): ManagedFileSystem {
         existingFile.content = content;
         return;
       } else {
+        console.log("adding new file to dir: ", fullPath, " project dir: ", dir);
         addFileToDir(path.dirname(fullPath), dir, newDoc);
       }
       setDir({ ...dir });
@@ -127,15 +130,15 @@ function useManageFiles(folder: string): ManagedFileSystem {
     setDir({ ...dir });
   }
 
-  async function exportFile(path: string, context?: string) {
+  async function exportFile(filePath: string, context?: string) {
     const formData = new FormData();
-    const file = getFile(path);
-    if ( !file ) {
-      setError(`File ${path} not found for export`);
+    const doc = getFile(filePath);
+    if ( !doc ) {
+      setError(`File ${filePath} not found for export`);
       return;
     }
-    formData.append('doc', context || file.content);
-    formData.append('docName', file.title);
+    formData.append('doc', context || doc.content);
+    formData.append('docName', doc.title);
 
     await exportHtmlToPdf(formData);
   }
@@ -186,110 +189,108 @@ function manageEditedFilesReducer(state: { [key: string]: FileAction } = {}, act
   }
 }
 
-export default function useSyncedFileSystem(folder: string) {
-  const managedFileSystem = useManageFiles(folder);
-  const [activeFile, _setActiveFile] = useState<File | null>(null);
-  const [activeFileUpdated, setActiveFileUpdated] = useState<boolean>(false);
-  const [editedFiles, editedFilesDispatch] = useReducer(manageEditedFilesReducer, {});
-  const [seededEditedFiles, setSeededEditedFiles] = useState<boolean>(false);
+type ActiveFile = File | null;
+type EditedFiles = { [path: string]: FileAction };
 
-  // Add file to edited if updated. 
-  useEffect(() => {
-    if (activeFileUpdated && activeFile) {
-      editedFilesDispatch({ type: 'updated', path: activeFile.path });
+// Hook to manage current active file and edited files with optimistic updates.
+export default function useManageFileState(folder: string) {
+  const managedFileSystem = useManageFiles(folder);
+
+  const [activeFile, _setActiveFile] = useState<ActiveFile>(null);
+  const optimisticActiveFile = useRef<ActiveFile>(null);
+
+  const [editedFiles, editedFilesDispatch] = useReducer(manageEditedFilesReducer, {});
+  const optimisticEditedFiles = useRef<EditedFiles | null>({});
+
+  const [initialized, setInitialized] = useState<boolean>(false);
+
+  function setEditedFiles(type: FileAction | 'clear', path: string) {
+    if ( type === 'clear' ) {
+      optimisticEditedFiles.current = {};
+      editedFilesDispatch({ type: 'clear', path: '' });
+      return;
     }
-  }, [activeFileUpdated])
+    optimisticEditedFiles.current = manageEditedFilesReducer(optimisticEditedFiles.current || {}, { type, path:  folder + '/' + path });
+    editedFilesDispatch({ type, path: folder + '/' + path });
+  }
 
   // On initial load, set edited files to all files in dir.
   useEffect(() => {
-    if( !seededEditedFiles && managedFileSystem.dir.children.length > 0 ) {
-      setSeededEditedFiles(true);
+    if( !initialized && managedFileSystem.dir.children.length > 0 ) {
+      setInitialized(true);
       let copyEditedFiles = { ...editedFiles };
       let files = flattenDir(managedFileSystem.dir);
       files.forEach(file => {
         if( !(file.path in copyEditedFiles) ) {
-          editedFilesDispatch({ type: 'created', path: file.path });
+          setEditedFiles('updated', file.path);
         }
       });
     }
   }, [managedFileSystem.dir])
 
-  function saveActiveFile() {
-    if ( !activeFile || !activeFileUpdated ) return;
-    managedFileSystem.updateFile(activeFile.path, activeFile.content);
-    editedFilesDispatch({ type: 'updated', path: activeFile.path });
-  }
-
   function setActiveFileContent(content: string) {
     if ( !activeFile ) return;
-    _setActiveFile({ ...activeFile, content });
-    setActiveFileUpdated(true);
+    optimisticActiveFile.current = { path: activeFile.path, content };
+    _setActiveFile(optimisticActiveFile.current);
+    managedFileSystem.updateFile(optimisticActiveFile.current.path, content);
+    setEditedFiles('updated', activeFile.path);
   }
 
-  function handleChangeActiveFile(path: string, currentContent?: string) {
-    const file = managedFileSystem.getFile(path);
-    if ( activeFile && currentContent ) {
-      managedFileSystem.updateFile(activeFile.path, currentContent);
-      editedFilesDispatch({ type: 'updated', path: activeFile.path });
-    }
-
-    if( !file ) return;
-    _setActiveFile({ path, content: file.content });
-    setActiveFileUpdated(false);
+  function switchActiveFileTo(path?: string) {
+    const doc = path ? managedFileSystem.getFile(path) : null;
+    optimisticActiveFile.current = doc && path ? { path, content: doc.content } : null;
+    console.log("switchActiveFileTo:", path, optimisticActiveFile.current, doc);
+    _setActiveFile(optimisticActiveFile.current);
   }
 
-  function handleDeleteFile(path: string) {
-    if( activeFile?.path === path ) {
-      _setActiveFile(null);
-    }
-
+  function deleteFile(path: string) {
     managedFileSystem.deleteFile(path);
-    editedFilesDispatch({ type: 'deleted', path });
+    setEditedFiles('deleted', path);
   }
 
-  function handleExportFile(path: string) {
-    if( path === activeFile?.path && activeFileUpdated ) {
-      managedFileSystem.updateFile(activeFile.path, activeFile.content);
-      setActiveFileUpdated(false);
+  function exportFile(path: string) {
+    let content = '';
+    if ( optimisticActiveFile.current && optimisticActiveFile.current.path === path ) {
+      content = optimisticActiveFile.current.content;
+    } else {
+      const file = managedFileSystem.getFile(path);
+      content = file ? file.content : '';
     }
 
-    const file = managedFileSystem.getFile(path);
-    if( !file ) {
+    if( !content) {
       console.error("File not found for export: ", path);
       return;
     }
 
-    managedFileSystem.exportFile(path, file.content);
+    managedFileSystem.exportFile(path, content);
   }
 
-  function handleCreateFile(path: string, content: string) {
-    if( activeFile && activeFileUpdated ) {
-      managedFileSystem.updateFile(activeFile.path, activeFile.content);
-    }
-
+  function createFile(path: string, content: string) {
+    console.log("creatingFile, input: ", path, content);
     managedFileSystem.addFile(path, content);
-    editedFilesDispatch({ type: 'created', path: path });
-    _setActiveFile({ path, content });
+    setEditedFiles('created', path);
+
+    optimisticActiveFile.current = { path, content };
+    _setActiveFile(optimisticActiveFile.current);
   }
 
   function clearEditedFiles() {
-    editedFilesDispatch({ type: 'clear', path: '' });
+    setEditedFiles('clear', '');
   }
 
   return {
     allFiles: managedFileSystem.dir,
     loadFiles: managedFileSystem.loadDir,
     activeFile,
+    optimisticActiveFile: optimisticActiveFile.current,
+    optimisticEditedFiles: optimisticEditedFiles.current,
     setActiveFileContent,
-    saveActiveFile,
-    activeFileUpdated,
-    setActiveFileUpdated,
+    switchActiveFileTo,
     editedFiles,
     clearEditedFiles,
-    handleChangeActiveFile,
-    handleDeleteFile,
-    handleExportFile,
-    handleCreateFile,
+    deleteFile,
+    exportFile,
+    createFile,
   }
 
 }

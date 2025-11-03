@@ -51,6 +51,10 @@ export default function useChat(projectDirectory: string) {
     setIsLoading(true);
     getChatLog(projectName).then(logs => {
       setConversation(logs);
+      if ( logs.length > 0 ) {
+        setChatIndex(logs.length - 1);
+        setResponseId(logs[logs.length -1 ].response.lastResponseId);
+      }
     })
     .catch(error => {
       setError("Failed to load chat logs");

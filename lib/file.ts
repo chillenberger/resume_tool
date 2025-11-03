@@ -80,10 +80,12 @@ function getDirFile(fullPath: string, rootDir: Dir): Doc | null {
 }
 
 function addFileToDir(path: string, currentDir: Dir, doc: Doc) {
+  console.log('addFileToDir called with path:', path, 'doc title:', doc.title, 'currentDir title:', currentDir);
   let splitPath = path.split("/").filter(part => part !== "");
   let subPath = splitPath.shift();
+  console.log('Current subPath:', subPath);
 
-  if( !subPath ) {
+  if( !subPath || subPath === "." ) {
     currentDir.children.push(doc);
     return
   };

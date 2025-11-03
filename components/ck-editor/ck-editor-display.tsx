@@ -1,15 +1,19 @@
 // components/custom-editor.js
-'use client' // Required only in App Router.
+'use client'
 
-import { useRef, RefObject } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { ClassicEditor, Essentials, Paragraph, Bold, Italic, Editor, FullPage, GeneralHtmlSupport } from 'ckeditor5';
 
 import 'ckeditor5/ckeditor5.css';
 import 'ckeditor5-premium-features/ckeditor5-premium-features.css';
 
+interface DisplayEditorProps {
+  editorRef: {editorRef: React.MutableRefObject<Editor | null>, onUpdateCallback: (() => void) | undefined};
+  defaultContent: string;
+}
 
-export default function DisplayEditor({editorRef, defaultContent}: {editorRef: RefObject<Editor | null>, defaultContent: string}) {
+export default function DisplayEditor({editorRef, defaultContent}: DisplayEditorProps) {
+
     return (
         <div className="w-[50rem]">
             <CKEditor
@@ -18,7 +22,7 @@ export default function DisplayEditor({editorRef, defaultContent}: {editorRef: R
                     licenseKey: 'GPL',
                     plugins: [ Essentials, Paragraph, Bold, Italic, FullPage, GeneralHtmlSupport ],
                     toolbar: [ 'undo', 'redo', '|', 'bold', 'italic' ],
-                    initialData: defaultContent,
+                    initialData: defaultContent || "<p>Hello world!</p>",
                     htmlSupport: {
                         // fullPage: {
                         //     allowRenderStylesFromHead: true,
@@ -34,7 +38,11 @@ export default function DisplayEditor({editorRef, defaultContent}: {editorRef: R
                     }
                 } }
                 onReady={ (editor: Editor) => {
-                    editorRef.current = editor;
+                    editorRef.editorRef.current = editor;
+                }}
+                onChange={() => {
+                    if ( editorRef?.onUpdateCallback )
+                    editorRef.onUpdateCallback();
                 }}
             />
         </div>

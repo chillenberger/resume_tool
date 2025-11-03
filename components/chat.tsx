@@ -14,17 +14,17 @@ import {
 interface ChatWindowProps {
   loadDir: () => void;
   project: string
-  saveActiveFile: () => void;
   editedFiles: {[path: string]: 'created' | 'updated' | 'deleted'};
   clearEditedFiles: () => void;
+  onRequest?: () => void;
 }
 
 export default function ChatWindow({
     loadDir,
     project,
-    saveActiveFile,
     editedFiles,
-    clearEditedFiles
+    clearEditedFiles,
+    onRequest,
 }: ChatWindowProps) {
   const { conversation, chatIndex, setChatIndex, responseId, isLoading: chatLoading, chatRequest, error: chatError, loadChatByProjectName } = useChat(project);
 
@@ -34,10 +34,11 @@ export default function ChatWindow({
     loadChatByProjectName(project);
   }, [])
 
+  // On response clear local edited files tracker and reload all files if changes by chat. 
   useEffect(() => {
+    clearEditedFiles();
     const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.file_actions;
-    if ( !lastChatResponseFiles ) return;
-    loadDir();
+    if ( lastChatResponseFiles ) loadDir();
   }, [conversation])
 
   async function handleNewRequest(event: React.FormEvent<HTMLFormElement>) {
@@ -47,10 +48,8 @@ export default function ChatWindow({
     event.currentTarget.reset();
     const userRequest = formData.get('userQuery') as string;
 
-    
-    saveActiveFile();
+    onRequest && onRequest();
 
-    clearEditedFiles();
     chatRequest(userRequest, project, editedFiles);
   }
 

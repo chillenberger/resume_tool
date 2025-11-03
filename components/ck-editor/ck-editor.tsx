@@ -1,7 +1,8 @@
-import { useRef } from "react";
+import { useRef  } from "react";
+import {  Editor } from 'ckeditor5';
 
-export default function HtmlEditor () {
-    const editorRef = useRef<any>(null);
+export default function useCKHtmlEditor (onUpdateCallback?: () => void) {
+    const editorRef = useRef<Editor | null>(null);
 
-    return editorRef;
+    return {editorRef, onUpdateCallback};
 }

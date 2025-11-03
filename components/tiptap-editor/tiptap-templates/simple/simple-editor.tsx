@@ -68,17 +68,13 @@ import { useCursorVisibility } from "@/hooks/use-cursor-visibility"
 
 // --- Components ---
 import { ThemeToggle } from "@/components/tiptap-editor/tiptap-templates/simple/theme-toggle"
-import CustomElement from "@/components/tiptap-editor/tiptap-templates/simple/custom-element";
 
 // --- Lib ---
 import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils"
 
 // --- Styles ---
 import "@/components/tiptap-editor/tiptap-templates/simple/simple-editor.scss"
-import { File } from "@/types"
 
-import { Dispatch, SetStateAction } from 'react';
-import { get } from "http"
 import { Editor } from "@tiptap/core";
 
 const MainToolbarContent = ({
@@ -260,7 +256,7 @@ function DisplayEditor({editor, editorType}: DisplayEditorProps) {
   )
 }
 
-function useSimpleMarkdownEditor() {
+function useTipTapMarkdownEditor(onUpdateCallback?: () => void) {
   const markdownEditor = useEditor({
     immediatelyRender: false,
     shouldRerenderOnTransaction: false,
@@ -277,14 +273,18 @@ function useSimpleMarkdownEditor() {
       StarterKit,
       Markdown
     ],
-
     contentType: "markdown",
+    onUpdate: () => {
+      if ( onUpdateCallback ) {
+        onUpdateCallback();
+      }
+    },
   })
 
   return markdownEditor;
 }
 
-function useSimpleHtmlEditor() {
+function useTipTapHtmlEditor() {
 
   const htmlEditor = useEditor({
     immediatelyRender: false,
@@ -330,4 +330,4 @@ function useSimpleHtmlEditor() {
   return htmlEditor;
 }
 
-export { DisplayEditor, useSimpleMarkdownEditor, useSimpleHtmlEditor }
+export { DisplayEditor, useTipTapHtmlEditor, useTipTapMarkdownEditor }
