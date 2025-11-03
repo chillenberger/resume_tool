@@ -1,0 +1,72 @@
+
+{
+  "Frontend": [
+    "React (8+ years, advanced)",
+    "Next.js (SSR, CSR, RSC experience)",
+    "TypeScript (3+ years, strong)",
+    "2+ years Tailwind",
+    "6+ years Bootstrap",
+    "8+ years HTML",
+    "8+ years CSS",
+    "8+ years SCSS",
+    "Leptos (1+ years)",
+    "Sailfish (2+ years)",
+    "Turbo (2+ years)",
+    "Stimulus (2+ years)",
+    "SSR (3+ years)",
+    "CSR (6+ years)",
+    "Familiar with: Redux state management"
+  ],
+  "Performance & Accessibility": [
+    "Web performance optimization (lazy loading, code splitting)",
+    "Accessibility (WCAG compliance, ARIA best practices)",
+    "Cross-browser and device compatibility"
+  ],
+  "Architecture": [
+    "Scalable front-end systems",
+    "reusable component libraries",
+    "Micro Frontends",
+    "CI/CD pipelines (GitHub Actions)"
+  ],
+  "Testing": [
+    "Jest (2+ years)",
+    "Storybook (2+ years)",
+    "Mock Service Worker (MSW) (1+ years)",
+    "Husky (4+ years)",
+    "Prettier (4+ years)"
+  ],
+  "Backend": [
+    "Node.js (8+ years, advanced)",
+    "RESTful APIs (7+ years, strong)",
+    "Rust (2+ years, strong)",
+    "Python (8+ years, advanced)",
+    "Rocket (2+ years, strong)",
+    "Next.js (SSR, CSR, RSC experience)",
+    "Django (competent)"
+  ],
+  "Database": [
+    "PostgreSQL (advanced, schema design, migrations)",
+    "DynamoDB",
+    "SQLx"
+  ],
+  "Cloud/DevOps": [
+    "AWS (Lambda, S3, IoT Core, DynamoDB)",
+    "CI/CD (GitHub Actions, pipelines)",
+    "Build tools: Webpack, Rollup, Vite"
+  ],
+  "Other": [
+    "Fortran",
+    "C++",
+    "Technical writing & documentation",
+    "Leadership",
+    "Mentoring",
+    "Code reviews",
+    "Instruction",
+    "Startup Experience",
+    "OAuth",
+    "Open-source projects",
+    "AI-assisted development (Copilot, Claude, Cursor)",
+    "S3"
+  ]
+}
+

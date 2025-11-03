@@ -1,51 +1,72 @@
-import OpenAI from "openai";
-import { ResponseInput } from "openai/resources/responses/responses.mjs";
-import { zodTextFormat } from "openai/helpers/zod";
-import { conversationSchema, Conversation, Doc } from "../types";
+import { ChatSchema } from "../types";
+import { Agent, run, MCPServerStdio } from '@openai/agents';
+import path from "path";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const SYSTEM_PROMPT = `You are a professional career coach that lives inside my text editor. Use the tools to read the filesystem and answer questions based on those files. If you are unable to find any files, you can say so instead of assuming they exist.
+  You can suggest information that would be useful in helping me get hired.
 
-const SYSTEM_PROMPT = `
-You are a professional career coach that helps me tailor my resume to a provided job description using my provided resume json data.
-When you fill out my resume and cover letter, you will not sound too formal or robotic. You will sound like a human.
+  You have discussions with me and help me create and improve job application materials.
 
-If the job description is not provided, you will ask for it.
-If the job description says I need to do something special (like use a specific word, send an email, or include a specific section), if you can do it, you will, else let me know what I need to do by placing instructions in the special instructions field of response schema.
+  You will review all the files available to you when we begin our conversation.  If a file changes during our conversation, review it and adjust your recommendations accordingly.
 
-I will sometimes include extra information about the company, like their mission statement or values.
-
-Your messages are clear and direct.
-
-never use m dashes. 
-
-We will use the following schema for our conversations:
-${conversationSchema}
+  - Do not sound too formal or robotic.
+  - Do not ever use em dashes.
+  - Only produce files that are markdown or html.
+  - Write like a 36 year old professional software engineer applying for jobs.
 `
 
-async function askChat(userQuery: string, previousResponseId: string | null, files: Doc[]) {
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+class MyAgent {
+  private agent: Agent<unknown, typeof ChatSchema>;
+  private mcpServer: MCPServerStdio;
+  projectName: string;
 
-  const text: Conversation = {
-    message: userQuery,
-    files: files,
-    special_instructions: null,
+  constructor(projectName: string) {
+    console.log("Initializing MCP server for project:", projectName);
+    this.projectName = projectName;
+    this.mcpServer = this.CreateServer();
+    this.agent = this.CreateAgent(this.mcpServer);
+
+    this.mcpServer.connect();
   }
 
-  const content = { type: "input_text", text: text };
-  
-  const input: ResponseInput = [{ role: "user", content: JSON.stringify(content) }];
+  destroy() {
+    console.log("Closing MCP server");
+    this.mcpServer.close();
+  }
 
-  const response = await client.responses.create({
-    model: "gpt-5",
-    instructions: SYSTEM_PROMPT,
-    input: input,
-    previous_response_id: previousResponseId ? previousResponseId : null,
-    text: {
-      format: zodTextFormat(conversationSchema, "item_schema"),
+  private CreateAgent(mcpServer: MCPServerStdio): Agent<unknown, typeof ChatSchema> {
+    const result =  new Agent({
+      name: 'FS MCP Assistant',
+      model: 'gpt-5',
+      instructions: SYSTEM_PROMPT,
+      mcpServers: [mcpServer],
+      outputType: ChatSchema,
+    });
+    return result;
+  }
+
+  private CreateServer() {
+    const projectDir = path.join(process.cwd(), '/public/projects/' + this.projectName);
+
+    return new MCPServerStdio({
+      name: 'Filesystem MCP Server, via npx',
+      fullCommand: `npx -y @modelcontextprotocol/server-filesystem ${projectDir}`,
+    })
+  }
+
+  async run(userQuery: string, previousResponseId: string | null) {
+
+    console.log("Running agent with query:", userQuery);
+
+    try {
+      return await run(this.agent, userQuery, { previousResponseId: previousResponseId ? previousResponseId : undefined });
+    } catch (error) {
+      throw error;
     }
-  });
+  }
 
-  return response;
+  // TODO: move logging from chat service to here. remove user_id from chat log, make table user project id.
+
 }
 
-export { askChat };
+export { MyAgent };

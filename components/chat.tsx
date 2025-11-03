@@ -1,132 +1,66 @@
 
-import useChat from '../hooks/chat-hook';
-import { useEffect, useState } from 'react';
-import { Dispatch, SetStateAction } from 'react';
-import { Doc } from '../types';
-import Loader from './loader';
-import { useManageFiles} from '../hooks/file-manager-hook';
-import FileTree from './file-tree';
+import useChat from '@/hooks/use-chat';
+import { useEffect} from 'react';
+import Loader from '@/components/loader';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
-  faUser, 
+  faUser,
   faPaperPlane, 
   faRobot,
-  faFileCircleXmark,
   faCircleExclamation
 } from '@fortawesome/free-solid-svg-icons';
 
 interface ChatWindowProps {
-  setActiveDoc: Dispatch<SetStateAction<Doc | null>>, 
-  activeDoc: Doc | null,
-  activeDocUpdated: boolean, 
-  setActiveDocUpdated: Dispatch<SetStateAction<boolean>>
+  loadDir: () => void;
+  project: string
+  editedFiles: {[path: string]: 'created' | 'updated' | 'deleted'};
+  clearEditedFiles: () => void;
+  onRequest?: () => void;
 }
 
 export default function ChatWindow({
-    setActiveDoc, 
-    activeDoc, 
-    activeDocUpdated, 
-    setActiveDocUpdated}: ChatWindowProps) {
-  const { files: docs, fileDispatch, isLoading: docsLoading, error: fileError, exportFile } = useManageFiles('temp');
-  const { conversation, chatIndex, setChatIndex, responseId, isLoading: chatLoading, generateResumeRequest, chatRequest, error: chatError } = useChat();
-  const [discussDoc, setDiscussDoc] = useState<string | null>(null);
+    loadDir,
+    project,
+    editedFiles,
+    clearEditedFiles,
+    onRequest,
+}: ChatWindowProps) {
+  const { conversation, chatIndex, setChatIndex, responseId, isLoading: chatLoading, chatRequest, error: chatError, loadChatByProjectName } = useChat(project);
 
-  const isLoading = docsLoading || chatLoading;
-
-  function handleExportFile(title: string) {
-    exportFile(title, activeDoc?.title === title ? activeDoc.content : docs[title]);
-  }
+  const isLoading = chatLoading;
 
   useEffect(() => {
-    setActiveDoc(null);
-    setActiveDocUpdated(false);
-    generateResumeRequest();      
-  }, []);
+    loadChatByProjectName(project);
+  }, [])
 
+  // On response clear local edited files tracker and reload all files if changes by chat. 
   useEffect(() => {
-    if( discussDoc === activeDoc?.title && activeDocUpdated ) {
-      setDiscussDoc(null);
-    }
-  }, [activeDocUpdated])
-
-  useEffect(() => {
-    const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.files;
-    if ( !lastChatResponseFiles ) return;
-
-    const newAndUpdatedFiles: { [key: string]: string } = {};
-
-    if ( activeDoc ) {
-      fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
-      setActiveDocUpdated(false);
-    }
-
-    lastChatResponseFiles.forEach(file => {
-      newAndUpdatedFiles[file.title] = file.content;
-      fileDispatch({ type: 'update', title: file.title, content: file.content });
-    })
-
-    if ( lastChatResponseFiles[0] ) {
-      setActiveDoc({title: lastChatResponseFiles[0].title, content: lastChatResponseFiles[0].content});
-    } else if( activeDoc ) {
-      setActiveDoc( activeDoc )
-    } else {
-      setActiveDoc(null);
-    }
-       
+    clearEditedFiles();
+    const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.file_actions;
+    if ( lastChatResponseFiles ) loadDir();
   }, [conversation])
 
-  function handleNewRequest(event: React.FormEvent<HTMLFormElement>) {
+  async function handleNewRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     
     const formData = new FormData(event.currentTarget);
+    event.currentTarget.reset();
     const userRequest = formData.get('userQuery') as string;
 
-    setActiveDocUpdated(false);
-    if( discussDoc ) {
-      formData.append('doc', JSON.stringify({title: discussDoc, content: docs[discussDoc as keyof typeof docs]}));
-      setDiscussDoc(null);
-    }
+    onRequest && onRequest();
 
-    const doc: Doc | undefined = docs[discussDoc as keyof typeof docs] && discussDoc ? {title: discussDoc, content: docs[discussDoc as keyof typeof docs]} : undefined;
-
-    event.currentTarget.reset();
-    chatRequest(userRequest, doc);
-  }
-
-  function handleChangeFile(title: string) {
-    if( activeDoc ) fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
-    setActiveDoc({ title, content: docs[title] });
-    setActiveDocUpdated(false);
-  }
-
-  function handleSetFileAsContext(title: string) {
-    if( activeDoc ) fileDispatch({ type: 'update', title: activeDoc.title, content: activeDoc.content });
-    setDiscussDoc(title);
-    setActiveDocUpdated(false);
+    chatRequest(userRequest, project, editedFiles);
   }
 
   return (
-      <div className="flex flex-col gap-3 p-3 w-lg h-full">
-        <FileTree files={Object.entries(docs).map(([title, content]) => ({
-          title,
-          activeFile: activeDoc?.title === title,
-          onFileSelect: handleChangeFile,
-          onFileExport: handleExportFile,
-          onFileSetAsContext: handleSetFileAsContext
-        }))} />
-        
-        {fileError && <div className="text-red-500">{fileError}</div>}
+      <>
         <form onSubmit={handleNewRequest} className=" bg-white rounded-lg p-2 relative">
-          {responseId ? <>
-            <textarea name="userQuery" className="chat-input" placeholder="Discuss with ChatGPT"></textarea>
-            <input type="hidden" name="previousResponseId" value={responseId}/>
-            <div className="absolute top-1 right-1"><button type="submit" className="hover:cursor-pointer" disabled={isLoading}>{isLoading ? <Loader withText={false}/> : <FontAwesomeIcon icon={faPaperPlane} className="text-gray-800"/>}</button></div>
-            {discussDoc && <div className="text-neutral-800">{discussDoc}<button type="button" aria-label="remove doc" onClick={() => setDiscussDoc(null)}><FontAwesomeIcon icon={faFileCircleXmark} /></button></div>}
-          </> : <Loader />
-          }
+          <textarea name="userQuery" className="chat-input" placeholder="Discuss with ChatGPT"></textarea>
+          {responseId && <input type="hidden" name="previousResponseId" value={responseId}/>}
+          <div className="absolute top-1 right-1"><button type="submit" className="hover:cursor-pointer" disabled={isLoading}>{isLoading ? <Loader withText={false}/> : <FontAwesomeIcon icon={faPaperPlane} className="text-gray-800"/>}</button></div>
         </form>
-        {chatError && <div className="text-red-500">{chatError}</div>}
+        {(chatError) && <div className="text-red-500">{chatError}</div>}
 
         <div className="flex flex-row gap-2 justify-center items-center">
           {conversation.map((_, i) => (
@@ -146,6 +80,6 @@ export default function ChatWindow({
             </div>
           </div>
         }
-      </div>
+      </>
   )
 }
