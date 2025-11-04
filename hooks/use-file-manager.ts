@@ -223,12 +223,12 @@ export default function useManageFileState(folder: string) {
   useEffect(() => {
     if ( activeFile ) {
       const updatedDoc = managedFileSystem.getFile(activeFile.path);
-      if ( updatedDoc ) {
+      if ( updatedDoc && updatedDoc.content !== activeFile.content ) {
         optimisticActiveFile.current = { path: updatedDoc.title, content: updatedDoc.content };
         _setActiveFile(optimisticActiveFile.current);
       }
     }
-  }, [managedFileSystem.dir])
+  }, [managedFileSystem.dir, activeFile?.path])
 
   // On initial load, set edited files to all files in dir.
   useEffect(() => {

@@ -257,6 +257,7 @@ function DisplayEditor({editor, editorType}: DisplayEditorProps) {
 }
 
 function useTipTapMarkdownEditor(onUpdateCallback?: () => void) {
+  console.log("creating markdown editor")
   const markdownEditor = useEditor({
     immediatelyRender: false,
     shouldRerenderOnTransaction: false,

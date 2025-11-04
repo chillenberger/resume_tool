@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, use, useReducer } from 'react';
+import { useState, useEffect, useRef, use, useReducer, useCallback } from 'react';
 import ChatWindow from '@/components/chat';
 import useManageFileState from '@/hooks/use-file-manager';
 import WaterAscii from '@/components/water-ascii';

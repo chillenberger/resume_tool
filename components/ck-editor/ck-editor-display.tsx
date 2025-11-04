@@ -41,8 +41,9 @@ export default function DisplayEditor({editorRef, defaultContent}: DisplayEditor
                     editorRef.editorRef.current = editor;
                 }}
                 onChange={() => {
-                    if ( editorRef?.onUpdateCallback )
-                    editorRef.onUpdateCallback();
+                    if ( editorRef?.onUpdateCallback ) {
+                        editorRef.onUpdateCallback();
+                    }
                 }}
             />
         </div>
