@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, use, useReducer, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, use, useReducer, useCallback } from 'react';
 import ChatWindow from '@/components/chat';
 import useManageFileState from '@/hooks/use-file-manager';
 import WaterAscii from '@/components/water-ascii';
@@ -28,8 +28,6 @@ function activeFileReducer(state: ActiveFileActions, action: 'reset' | 'next') {
 
 export default function ChatPage({params}: {params: Promise<{ project: string}>}) {
   const {project} = use(params);
-  const [waterSize, setWaterSize] = useState<{rows: number, cols: number}>({rows: 0, cols: 0});
-  const waterContainerRef = useRef<HTMLDivElement>(null);
   const [activeFileState, activeFileStateDispatch] = useReducer(activeFileReducer, "none");
 
   const {
@@ -49,23 +47,6 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
   const htmlEditor = useCKHtmlEditor(() => activeFileStateDispatch('next'));
 
   const isLoading = false;
-
-  useEffect(() => {
-    function updateWaterSize() {
-      if (waterContainerRef.current) {
-        const height = waterContainerRef.current.clientHeight;
-        const width = waterContainerRef.current.clientWidth;
-        const approxCharHeight = 15; // Approximate character height in pixels
-        const approxCharWidth = 10; // Approximate character width in pixels
-        const rows = Math.floor(height / approxCharHeight);
-        const cols = Math.floor(width / approxCharWidth);
-        setWaterSize({ rows, cols });
-      }
-    }
-
-    updateWaterSize();
-  }, [waterContainerRef.current]);
-
 
   function getContentTypeFromPath(filePath: string): 'html' | 'markdown' {
     const ext = path.extname(filePath).toLowerCase();
@@ -164,9 +145,8 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
                 <DisplayEditor editor={markdownEditor} editorType={'markdown'} /> :  
                 <DisplayCKEditor editorRef={htmlEditor} defaultContent={activeFile?.content || ""}/> 
               }
-            </div> : 
-            <div className="h-[90vh]" ref={waterContainerRef}><WaterAscii rows={waterSize.rows} cols={waterSize.cols} /></div> 
-          
+            </div> :
+            <WaterAscii className="h-[90vh]"/>
           }
         </div>
       </div>

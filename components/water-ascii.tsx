@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 
 // themes: water as highest good, finding low places, grace without force
 // visualization: ASCII characters flow like water, seeking their natural level without effort
@@ -32,7 +32,7 @@ const useAnimationFrame = (callback: (deltaTime: number) => void, isRunning = tr
   }, [animate, isRunning]);
 };
 
-const WaterAscii: React.FC<{rows: number, cols: number}> = ({rows, cols}) => {
+const WaterAsciiAnimation: React.FC<{rows: number, cols: number}> = ({rows, cols}) => {
   const [frame, setFrame] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const characters = '~≈≋⋿⊰⊱◟◝';
@@ -169,5 +169,57 @@ const WaterAscii: React.FC<{rows: number, cols: number}> = ({rows, cols}) => {
     </div>
   );
 };
+
+const WaterAscii = (props: {className: string}) => {
+  const [waterSize, setWaterSize] = useState<{rows: number, cols: number}>({rows: 0, cols: 0});
+  const waterContainerRef = useRef<HTMLDivElement>(null);
+
+
+  const updateWaterSize = useCallback(() => {
+    if (waterContainerRef.current) {
+      const height = waterContainerRef.current.clientHeight;
+      const width = waterContainerRef.current.clientWidth;
+      const approxCharHeight = 15; // Approximate character height in pixels
+      const approxCharWidth = 10; // Approximate character width in pixels
+      const rows = Math.floor(height / approxCharHeight);
+      const cols = Math.floor(width / approxCharWidth);
+      setWaterSize({ rows, cols });
+    }
+  }, []); // Empty deps are safe: refs and setState are stable
+
+  useLayoutEffect(() => {
+    // Initial size calculation
+    updateWaterSize();
+
+    // Listen for window resize events
+    const handleResize = () => {
+      updateWaterSize();
+    };
+
+    // Use ResizeObserver to detect container size changes
+    const resizeObserver = waterContainerRef.current
+      ? new ResizeObserver(() => {
+          updateWaterSize();
+        })
+      : null;
+
+    if (waterContainerRef.current && resizeObserver) {
+      resizeObserver.observe(waterContainerRef.current);
+    }
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, [updateWaterSize]);
+
+  return (
+    <div ref={waterContainerRef} className={props.className}><WaterAsciiAnimation rows={waterSize.rows} cols={waterSize.cols} /></div>
+  );
+}
 
 export default WaterAscii;
