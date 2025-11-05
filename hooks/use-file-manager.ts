@@ -7,15 +7,15 @@ import {
   exportHtmlToPdf,
   createNewProject,
 } from '@/services/file-service';
-import { Dir, Doc, File, FileAction } from '../types';
-import { getDirFile, addFileToDir, deleteFileFromDir } from '@/lib/file';
+import { Dir, File, FileAction } from '../types';
+import { readFileInDir, createFileInDir, deleteFileFromDir, updateFileInDir } from '@/lib/file';
 import path from 'path';
 import { flattenDir } from '@/lib/file';
 
 type ManagedFileSystem = {
   dir: Dir;
   setDir: React.Dispatch<React.SetStateAction<Dir>>;
-  getFile: (path: string) => Doc | null;
+  getFile: (path: string) => File | null;
   updateFile: (path: string, content: string) => void;
   deleteFile: (path: string) => void;
   addFile: (path: string, content: string) => void;
@@ -33,12 +33,14 @@ function useManageFiles(folder: string): ManagedFileSystem {
   const isInitialized = useRef(false);
   const [pushLockout, setPushLockout] = useState<number>(0);
 
+  // On load pull current file system from cloud.
   useEffect(() => {
     pullFileSystem();
   }, [])
 
-  // If files change sync server.
+  // If files change push local dir state to cloud.
   useEffect(() => {
+    console.log("useEffect: ", isInitialized, pushLockout, dir);
     if ( !isInitialized.current ) { isInitialized.current = true; return; };
     if ( pushLockout > 0 ) {
       setPushLockout(pushLockout - 1);
@@ -48,6 +50,7 @@ function useManageFiles(folder: string): ManagedFileSystem {
   }, [dir]);
 
   const pushFileSystem = useCallback(async () => {
+    console.log("pushFileSystem: ", dir);
     setIsLoading(true);
     try {
       await setFileSystem(dir, folder);
@@ -71,79 +74,72 @@ function useManageFiles(folder: string): ManagedFileSystem {
     }
   }
 
-  function getFile(path: string): Doc | null {
-    try {
-      let doc = getDirFile(path, dir);
-      return doc;
-    } catch (error) {
-      setError("Failed to fetch file");
-    }
-    return null;
-  }
-
-  async function updateFile(filePath: string, content: string) {
-    let file = getFile(filePath);
-    if ( !file ) throw new Error(`File ${filePath} not found for update`);
-    file.content = content;
-    setDir({ ...dir });
-  }
-
-  function addFile(fullPath: string, content: string) {
-    console.log("addFile, input: ", fullPath, content);
-    const fileName = path.basename(fullPath);
-    if ( !fileName ) throw new Error("Invalid file name");
-    
-    const newDoc: Doc = { title: fileName, content };
-    try {
-      let existingFile = getDirFile(fullPath, dir);
-      if ( existingFile ) {
-        existingFile.content = content;
-        return;
-      } else {
-        console.log("adding new file to dir: ", fullPath, " project dir: ", dir);
-        addFileToDir(path.dirname(fullPath), dir, newDoc);
-      }
-      setDir({ ...dir });
-      return;
-    } catch (error) {
-      setError("Failed to add file");
-    }
-  }
-
+  // Build a new cloud store.
   function addProject(projectName: string) {
     setIsLoading(true);
+    const nextRootDir = {...dir};
     const newDir: Dir = { title: projectName, children: [] };
     try {
       createNewProject(projectName);
+      nextRootDir.children.push(newDir);
+      setDir(nextRootDir);
     } catch (error) {
       setError("Failed to create new project");
     } finally {
-      dir.children.push(newDir);
-      setDir({ ...dir });
       setIsLoading(false);
     }
   }
 
-  function deleteFile(pathToDelete: string) {
-    const pathParts = pathToDelete.split('/').filter(part => part.length > 0);
-    if ( pathParts.length === 0 ) {
-      setError("Invalid path for deletion");
-      return;
-    }
-
-    deleteFileFromDir(pathToDelete, dir);
-    setDir({ ...dir });
+  // Get a file at the path from the local store.
+  function getFile(path: string): File | null {
+    return readFileInDir(path, dir);
   }
 
+  // Update a file at the path for the local store.
+  async function updateFile(filePath: string, content: string) {
+    const nextDir = {...dir};
+    let file = readFileInDir(filePath, nextDir);
+    if ( !file ) throw new Error(`File ${filePath} not found for update`);
+    file.content = content;
+    updateFileInDir(file, nextDir);
+    setDir(nextDir);
+  }
+
+  // Add a file at the path for the local store.
+  function addFile(fullPath: string, content: string) {
+    const nextDir = {...dir}
+    try {
+      let existingFile = readFileInDir(fullPath, dir);
+      if ( existingFile ) {
+        existingFile.content = content;
+        return;
+      } else {
+        createFileInDir({path: fullPath, content} ,nextDir)
+      }
+    } catch (error) {
+      setError("Failed to add file");
+    } finally {
+      setDir(nextDir);
+    }
+  }
+
+  // Delete a file at the path for the local store.
+  function deleteFile(pathToDelete: string) {
+    const nextDir = {...dir}
+    deleteFileFromDir(pathToDelete, nextDir);
+    setDir(nextDir);
+  }
+
+  // Export a file to a pdf with potential new content.
   async function exportFile(filePath: string, context?: string) {
     const formData = new FormData();
-    const doc = getFile(filePath);
-    if ( !doc ) {
+    const file = readFileInDir(filePath, dir);
+    if ( !file ) {
       setError(`File ${filePath} not found for export`);
       return;
     }
-    formData.append('doc', context || doc.content);
-    formData.append('docName', doc.title);
+    formData.append('doc', context || file.content);
+    formData.append('docName', path.basename(file.path));
 
     await exportHtmlToPdf(formData);
   }
@@ -215,16 +211,16 @@ export default function useManageFileState(folder: string) {
       editedFilesDispatch({ type: 'clear', path: '' });
       return;
     }
-    optimisticEditedFiles.current = manageEditedFilesReducer(optimisticEditedFiles.current || {}, { type, path:  folder + '/' + path });
-    editedFilesDispatch({ type, path: folder + '/' + path });
+    optimisticEditedFiles.current = manageEditedFilesReducer(optimisticEditedFiles.current || {}, { type, path });
+    editedFilesDispatch({ type, path });
   }, [editedFilesDispatch]);
 
   // update active file if dir updated;
   useEffect(() => {
     if ( activeFile ) {
-      const updatedDoc = managedFileSystem.getFile(activeFile.path);
-      if ( updatedDoc && updatedDoc.content !== activeFile.content ) {
-        optimisticActiveFile.current = { path: updatedDoc.title, content: updatedDoc.content };
+      const updatedFile = managedFileSystem.getFile(activeFile.path);
+      if ( updatedFile && updatedFile.content !== activeFile.content ) {
+        optimisticActiveFile.current = { ...updatedFile };
         _setActiveFile(optimisticActiveFile.current);
       }
     }
@@ -245,16 +241,18 @@ export default function useManageFileState(folder: string) {
   }, [managedFileSystem.dir])
 
   function setActiveFileContent(content: string) {
+    console.log("setActiveFileContent: ", content);
     if ( !activeFile ) return;
     optimisticActiveFile.current = { path: activeFile.path, content };
+    console.log(optimisticActiveFile.current);
     _setActiveFile(optimisticActiveFile.current);
     managedFileSystem.updateFile(optimisticActiveFile.current.path, content);
     setEditedFiles('updated', activeFile.path);
   }
 
   function switchActiveFileTo(path?: string) {
-    const doc = path ? managedFileSystem.getFile(path) : null;
-    optimisticActiveFile.current = doc && path ? { path, content: doc.content } : null;
+    const file = path ? managedFileSystem.getFile(path) : null;
+    optimisticActiveFile.current = file && path ? { path, content: file.content } : null;
     _setActiveFile(optimisticActiveFile.current);
   }
 

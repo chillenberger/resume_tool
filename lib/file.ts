@@ -1,5 +1,6 @@
 
-import { Dir, Doc, File } from '../types';
+import { Dir, Doc, File, EditorTypes } from '../types';
+import path from 'path';
 
 function flattenDir(item: Dir | Doc, path: string[] = [], files: File[] = []): File[] {
   if( 'content' in item ) {
@@ -16,117 +17,100 @@ function flattenDir(item: Dir | Doc, path: string[] = [], files: File[] = []): F
 }
 
 function expandDir(db: File[]): Dir {
-    const firstPath = db[0].path.split("/");
-    const rootTitle = firstPath[0];
-    if (!rootTitle) throw new Error("Invalid root directory");
-    const rootDir: Dir = { title: rootTitle, children: [] };
-    const currentDir = rootDir;
+  const firstPath = db[0].path.split("/");
+  const rootTitle = firstPath[0];
+  if (!rootTitle) throw new Error("Invalid root directory");
+  const rootDir: Dir = { title: rootTitle, children: [] };
+
+  for ( const file of db) {
+    createFileInDir(file, rootDir);
+  }
+
+  return rootDir
+}
+
+function findDir(currentPath: string, dir: Dir): Dir | null {
+  if (currentPath === "") return null
   
-    for( const item of db) {
-      let dir = findDir(item.path, currentDir);
-      let path: string[] = item.path.split("/");
-      path.shift(); // remove root
+  const splitPath = currentPath.split(path.sep);
+  if ( splitPath.shift() !== dir.title) return null;
 
-      const title: string = path.pop() || "failed";
-      const content = item.content
-      if ( !dir ) {
-        addFileToDir(path.join("/"), currentDir, { title, content: content });
-      } else {
-        dir.children.push({ title, content });
-      }
+  // let item: Dir | Doc | undefined;
+  while( splitPath.length > 0 ) {
+    const subpath = splitPath.shift();
+    const item = dir.children.find(c => c.title === subpath && 'children' in c ) as Dir;
+    if ( !item || 'content' in item ) return null
+    dir = item;
+  }
+
+  return dir && 'children' in dir ? dir : null;
+}
+
+function readFileInDir(fullPath: string, rootDir: Dir): File | null {
+  const fileName = path.basename(fullPath);
+  const dirName = path.dirname(fullPath);
+
+  const dir = !!fileName ? findDir(dirName, rootDir) : null;
+  const doc = !!dir ? dir.children.find(c => c.title === fileName && 'content' in c) as Doc | undefined : null;
+
+  return doc ? {path: fullPath, content: doc.content} : null;
+}
+
+function createFileInDir(file: File, dir: Dir) {
+  console.log(file, dir);
+  let dirName = path.dirname(file.path);
+  let docTitle = path.basename(file.path);
+  
+  const splitPath = dirName.split(path.sep).filter(part => part !== "");
+  let subPath = splitPath.shift();
+
+  if ( subPath !== dir.title) return;
+  subPath = splitPath.shift();
+  
+  while ( splitPath.length >= 0 && !!subPath ) {
+    let nextItem = dir.children.find((item) => item.title === subPath);
+    if ( !nextItem ) {
+      const newDir: Dir = { title: subPath, children: [] };
+      dir.children.push(newDir);
+      nextItem = newDir;
     }
-    return rootDir;
+
+    if ( 'content' in nextItem ) throw new Error(`Path ${path} not found, ${subPath} is a file`);
+    dir = nextItem;
+    subPath = splitPath.shift();
+  }
+
+  dir.children.push({title: docTitle, content: file.content});
 }
 
-// Go down the tree to find the directory at the given path
-function findDir(path: string, dir: Dir): Dir | null {
-  if (path === "") {
-    return dir;
-  }
-
-  let splitPath = path.split("/");
-  let subPath = splitPath.shift();
-
-  if (!subPath) {
-    return dir;
-  }
-
-  let nextItem = dir.children.find((item) => item.title === subPath);
-
-  if (!nextItem || !('children' in nextItem)) {
-    return null;
-  }
-
-  return findDir(splitPath.join("/"), nextItem as Dir);
+function updateFileInDir(file: File, dir: Dir) {
+  deleteFileFromDir(file.path, dir);
+  createFileInDir(file, dir);
 }
 
-// Return the actual doc object from the give directory. 
-function getDirFile(fullPath: string, rootDir: Dir): Doc | null {
-  let splitPath = fullPath.split("/");
-  const fileName = splitPath.pop();
-  if ( !fileName ) {
-    return null
-  }
-  const dir = findDir(splitPath.join("/"), rootDir);
-  if ( !dir ) {
-    return null;
-  }
+function deleteFileFromDir(rootPath: string, rootDir: Dir) {
+  const fileName = path.basename(rootPath);
+  const dirName = path.dirname(rootPath);
 
-  const file = dir.children.find(c => c.title === fileName && 'content' in c) as Doc | undefined;
-  if ( !file ) {
-    return null;
-  }
-  return file;
-}
+  if (!fileName) return false;
 
-function addFileToDir(path: string, currentDir: Dir, doc: Doc) {
-  console.log('addFileToDir called with path:', path, 'doc title:', doc.title, 'currentDir title:', currentDir);
-  let splitPath = path.split("/").filter(part => part !== "");
-  let subPath = splitPath.shift();
-  console.log('Current subPath:', subPath);
+  const dir = findDir(dirName, rootDir);
+  
+  if (!dir) return false;
 
-  if( !subPath || subPath === "." ) {
-    currentDir.children.push(doc);
-    return
-  };
-
-  let nextItem = currentDir.children.find((item) => item.title == subPath);
-
-  if ( !nextItem ) {
-    const newDir: Dir = { title: subPath, children: [] };
-    currentDir.children.push(newDir);
-    nextItem = newDir;
-  }
-
-  if ( 'children' in nextItem ) {
-    addFileToDir(splitPath.join("/"), nextItem, doc);
-  } else {
-    throw new Error(`Path ${path} not found, ${subPath} is a file`);
-  }
-
-  return currentDir;
-}
-
-function deleteFileFromDir(path: string, currentDir: Dir) {
-  let splitPath = path.split("/").filter(part => part !== "");
-  let fileName = splitPath.pop();
-
-  if (!fileName) {
-    return false;
-  }
-
-  let dir = findDir(splitPath.join("/"), currentDir);
-  if (!dir) {
-    return false;
-  }
-
-  let fileIndex = dir.children.findIndex(c => c.title === fileName && 'content' in c);
-  if (fileIndex === -1) {
-    return false;
-  }
+  const fileIndex = dir.children.findIndex(c => c.title === fileName && 'content' in c);
+  if (fileIndex === -1) return false;
 
   dir.children.splice(fileIndex, 1);
   return true;
 }
 
-export{ flattenDir, expandDir, findDir, getDirFile, addFileToDir, deleteFileFromDir }
+function getContentTypeFromPath(filePath: string): EditorTypes {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.md' || ext === '.markdown' || ext === '.txt' || ext === '.json') {
+    return 'markdown';
+  }
+  return 'html';
+}
+
+export{ flattenDir, expandDir, findDir, readFileInDir, createFileInDir, updateFileInDir, deleteFileFromDir, getContentTypeFromPath }

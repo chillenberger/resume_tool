@@ -1,7 +1,6 @@
-import { flattenDir, expandDir, findDir, getDirFile, deleteFileFromDir } from "@/lib/file";
+import { flattenDir, expandDir, findDir, deleteFileFromDir, createFileInDir, readFileInDir } from "@/lib/file";
 import {describe, expect, test} from '@jest/globals';
 import {Dir, File} from '@/types/index';
-// import path from 'path';
 
 describe('test flattenDir', () => {
   test('make a db from file system', () => {
@@ -20,7 +19,7 @@ describe('test expandDir', () => {
 
 describe('findDir', () => {
   test('find existing dir', () => {
-    const dir = findDir('subdir1/subsubdir1', TestDir);
+    const dir = findDir('root/subdir1/subsubdir1', TestDir);
     expect(dir).toEqual({
       title: 'subsubdir1',
       children: [
@@ -30,38 +29,58 @@ describe('findDir', () => {
   });
 
   test('return null for non-existing dir', () => {
-    const dir = findDir('subdir1/nonexistent', TestDir);
+    const dir = findDir('root/subdir1/nonexistent', TestDir);
     expect(dir).toBeNull();
   });
 
   test('return null when path points to a file', () => {
-    const dir = findDir('subdir1/file2.txt', TestDir);
+    const dir = findDir('root/subdir1/file2.txt', TestDir);
     expect(dir).toBeNull();
   });
 
+  test('find root', () => {
+    const dir = findDir('root', TestDir);
+    expect(dir).toBe(TestDir)
+  })
+
   test('return root dir for empty path', () => {
     const dir = findDir('', TestDir);
-    expect(dir).toEqual(TestDir);
+    expect(dir).toEqual(null);
   });
 });
 
-describe('getDirFile', () => {
+describe('readFileInDir', () => {
   test('get existing file', () => {
-    const file = getDirFile('subdir1/subsubdir1/file3.txt', TestDir);
-    expect(file).toEqual({ title: 'file3.txt', content: 'This is file 3' });
+    const filePath = 'root/subdir1/subsubdir1/file3.txt';
+    const file = readFileInDir(filePath, TestDir);
+    expect(file).toEqual({ path: filePath, content: 'This is file 3' });
   });
 });
 
 describe('deleteFileFromDir', () => {
   test('delete existing file', () => {
     const dirCopy: Dir = JSON.parse(JSON.stringify(TestDir));
-    let file = getDirFile('subdir1/file2.txt', dirCopy);
-    expect(file).toEqual({ title: 'file2.txt', content: 'This is file 2' });
-    deleteFileFromDir('subdir1/file2.txt', dirCopy);
-    file = getDirFile('subdir1/file2.txt', dirCopy);
+    let targetFile = flattenDir(TestDir)[3];
+
+    let file = readFileInDir(targetFile.path, dirCopy);
+    expect(file).toEqual(targetFile);
+
+    deleteFileFromDir(targetFile.path, dirCopy);
+    file = readFileInDir(targetFile.path, dirCopy);
     expect(file).toBeNull();
   });
 });
+
+describe('createFileInDir', () => {
+  test('add file', () => {
+    const dirCopy: Dir = JSON.parse(JSON.stringify(TestDir));
+    let file = {path: 'root/subdir1/subsubdir2/add-file.txt', content: "new file content"};
+    createFileInDir(file, dirCopy);
+    let foundDoc = readFileInDir(file.path, dirCopy);
+    expect(file.content).toEqual(foundDoc?.content);
+  })
+
+})
 
 const TestDir: Dir = { title: 'root', children: [
   { title: 'file1.txt', content: 'This is file 1' },
