@@ -40,7 +40,6 @@ function useManageFiles(folder: string): ManagedFileSystem {
 
   // If files change push local dir state to cloud.
   useEffect(() => {
-    console.log("useEffect: ", isInitialized, pushLockout, dir);
     if ( !isInitialized.current ) { isInitialized.current = true; return; };
     if ( pushLockout > 0 ) {
       setPushLockout(pushLockout - 1);
@@ -50,7 +49,6 @@ function useManageFiles(folder: string): ManagedFileSystem {
   }, [dir]);
 
   const pushFileSystem = useCallback(async () => {
-    console.log("pushFileSystem: ", dir);
     setIsLoading(true);
     try {
       await setFileSystem(dir, folder);
