@@ -1,10 +1,11 @@
 'use client'
-import { useState, useEffect, useLayoutEffect, useRef, use, useReducer, useCallback } from 'react';
+import { useEffect, use, useReducer, useCallback } from 'react';
 import ChatWindow from '@/components/chat';
 import useManageFileState from '@/hooks/use-file-manager';
 import WaterAscii from '@/components/water-ascii';
 import FileTree from '@/components/file-tree';
-import path from 'path';
+import { getContentTypeFromPath } from '@/lib/file';
+import Link from 'next/link';
 
 import { DisplayEditor, useTipTapMarkdownEditor } from '@/components/tiptap-editor/tiptap-templates/simple/simple-editor'
 
@@ -48,15 +49,7 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
 
   const isLoading = false;
 
-  function getContentTypeFromPath(filePath: string): 'html' | 'markdown' {
-    const ext = path.extname(filePath).toLowerCase();
-    if (ext === '.md' || ext === '.markdown' || ext === '.txt' || ext === '.json') {
-      return 'markdown';
-    }
-    return 'html';
-  }
-
-  function extractFileContent() {
+  const extractFileContent = useCallback(() => {
     if (!activeFile) return '';
     const contentType = getContentTypeFromPath(activeFile.path);
     if (contentType === 'markdown') {
@@ -64,7 +57,7 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
     } else {
       return htmlEditor?.editorRef.current?.getData() || '';
     }
-  }
+  }, [activeFile, markdownEditor, htmlEditor]);
 
   // Whenever active file changes, load its content into the appropriate editor.
   useEffect(() => {
@@ -76,19 +69,18 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
       const htmlContent = activeFile ? activeFile.content : '';
       htmlEditor.editorRef.current.setData(htmlContent);
     }
-  }, [activeFile]);
+  }, [activeFile, markdownEditor, htmlEditor]);
 
-  function handleSwitchActiveFile(path: string) {
+  const handleSwitchActiveFile = useCallback((path: string) => {
     if ( activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
     }
-
     activeFileStateDispatch('reset');
     switchActiveFileTo(path);
-  }
+  }, [activeFileState, extractFileContent, setActiveFileContent, activeFileStateDispatch, switchActiveFileTo]);
 
-  function handleOnFileDelete(path: string) {
+  const handleOnFileDelete = useCallback((path: string) => {
     if ( path === activeFile?.path && activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
@@ -96,38 +88,38 @@ export default function ChatPage({params}: {params: Promise<{ project: string}>}
     }
     activeFileStateDispatch('reset');
     deleteFile(path);
-  }
+  }, [activeFile, activeFileState, extractFileContent, setActiveFileContent, switchActiveFileTo, activeFileStateDispatch, deleteFile]);
 
-  function handleOnFileCreate(path: string) {
+  const handleOnFileCreate = useCallback((path: string) => {
     if ( activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
     }
     activeFileStateDispatch('reset');
     createFile(path, 'New file content');
-  }
+  }, [activeFileState, extractFileContent, setActiveFileContent, activeFileStateDispatch, createFile]);
 
-  function handleOnFileExport(path: string) {
+  const handleOnFileExport = useCallback((path: string) => {
     if( path === activeFile?.path && activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
     }
     activeFileStateDispatch('reset');
     exportFile(path);
-  }
+  }, [activeFile, activeFileState, extractFileContent, setActiveFileContent, activeFileStateDispatch, exportFile]);
 
-  function handleOnChatRequest() {
+  const handleOnChatRequest = useCallback(() => {
     if ( activeFileState === 'updated' ) {
       const currentContent = extractFileContent();
       setActiveFileContent(currentContent);
     }
     activeFileStateDispatch('reset');
-  }
+  }, [activeFileState, extractFileContent, setActiveFileContent, activeFileStateDispatch]);
 
   return (
     <div className="flex flex-row m-5">
       <div className="flex flex-col">
-        <h1 className="mb-2"><a href="/">Projects</a> / {project}</h1>
+        <h1 className="mb-2"><Link href="/">Projects</Link> / {project}</h1>
         <div className="p-2 bg-view-area rounded-md border border-neutral-50/20 me-8 h-[90vh]">
           <div className="flex flex-col gap-3 p-3 w-lg h-full">
             <FileTree dir={allFiles} onFileChange={handleSwitchActiveFile} onFileExport={handleOnFileExport} onFileDelete={handleOnFileDelete} onFileCreate={handleOnFileCreate} />

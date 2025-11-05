@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import scrapeUrl from '../services/scraper-service';
 import { File } from '../types';
 
@@ -7,11 +7,9 @@ export default function useUrlScraper() {
   const [error, setError] = useState<'URL is required' | 'Failed to scrape URL' | 'Path is required' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function urlToDoc(path: string, url: string): Promise<File | undefined> {
+  const urlToDoc = useCallback(async (path: string, url: string): Promise<File | undefined> => {
     setIsLoading(true);
 
-    // const url = formData.get('url') as string;
-    // const title = formData.get('title') as string || `context-${Date.now()}.md`;
 
     if (!url) {
       setError('URL is required');
@@ -36,7 +34,7 @@ export default function useUrlScraper() {
       setIsLoading(false);
     }
 
-  }
+  }, [])
 
   return { urlToDoc, isLoading, error };
 }

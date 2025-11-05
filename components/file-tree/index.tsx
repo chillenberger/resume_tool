@@ -5,11 +5,10 @@ import {
   faFileCirclePlus,
   faAdd
 } from '@fortawesome/free-solid-svg-icons';
-import { Dir, File } from '../../types';
+import { Dir, File } from '@/types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useState } from 'react';
 import useUrlScraper from '@/hooks/use-scraper';
-import { dir } from 'console';
 
 interface FileTreeProps {
   dir: Dir;

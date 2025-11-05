@@ -2,9 +2,9 @@
 // maintains local state of directory and files, syncs with server
 import { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { 
-  syncServerToDir,
-  exportHtmlToPdf, 
-  getDirContents,
+  getFileSystem,
+  setFileSystem,
+  exportHtmlToPdf,
   createNewProject,
 } from '@/services/file-service';
 import { Dir, Doc, File, FileAction } from '../types';
@@ -23,7 +23,7 @@ type ManagedFileSystem = {
   isLoading: boolean;
   error: string | null;
   addProject: (projectName: string) => void;
-  loadDir: () => void;
+  pullFileSystem: () => void;
 }
 
 function useManageFiles(folder: string): ManagedFileSystem {
@@ -31,26 +31,26 @@ function useManageFiles(folder: string): ManagedFileSystem {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isInitialized = useRef(false);
-  const [syncLockout, setSyncLockout] = useState<number>(0);
+  const [pushLockout, setPushLockout] = useState<number>(0);
 
   useEffect(() => {
-    loadDir();
+    pullFileSystem();
   }, [])
 
   // If files change sync server.
   useEffect(() => {
     if ( !isInitialized.current ) { isInitialized.current = true; return; };
-    if ( syncLockout > 0 ) {
-      setSyncLockout(syncLockout - 1);
+    if ( pushLockout > 0 ) {
+      setPushLockout(pushLockout - 1);
     } else {
-      syncDirWithServer();
+      pushFileSystem();
     }
   }, [dir]);
 
-  const syncDirWithServer = useCallback(async () => {
+  const pushFileSystem = useCallback(async () => {
     setIsLoading(true);
     try {
-      await syncServerToDir(dir, folder);
+      await setFileSystem(dir, folder);
     } catch (error) {
       setError("Failed to sync directory");
     } finally {
@@ -58,11 +58,11 @@ function useManageFiles(folder: string): ManagedFileSystem {
     }
   }, [dir]);
 
-  async function loadDir() {
-    setSyncLockout(syncLockout + 1);
+  async function pullFileSystem() {
+    setPushLockout(pushLockout + 1);
     setIsLoading(true);
     try {
-      const newContents: Dir = await getDirContents(folder);
+      const newContents: Dir = await getFileSystem(folder);
       setDir(newContents);
     } catch (error) {
       setError("Failed to fetch directory");
@@ -159,7 +159,7 @@ function useManageFiles(folder: string): ManagedFileSystem {
     exportFile,
     error, 
     addProject,
-    loadDir,
+    pullFileSystem,
   }
 }
 
@@ -209,7 +209,7 @@ export default function useManageFileState(folder: string) {
 
   const [initialized, setInitialized] = useState<boolean>(false);
 
-  function setEditedFiles(type: FileAction | 'clear', path: string) {
+  const setEditedFiles = useCallback((type: FileAction | 'clear', path: string) => {
     if ( type === 'clear' ) {
       optimisticEditedFiles.current = {};
       editedFilesDispatch({ type: 'clear', path: '' });
@@ -217,7 +217,7 @@ export default function useManageFileState(folder: string) {
     }
     optimisticEditedFiles.current = manageEditedFilesReducer(optimisticEditedFiles.current || {}, { type, path:  folder + '/' + path });
     editedFilesDispatch({ type, path: folder + '/' + path });
-  }
+  }, [editedFilesDispatch]);
 
   // update active file if dir updated;
   useEffect(() => {
@@ -281,7 +281,6 @@ export default function useManageFileState(folder: string) {
   }
 
   function createFile(path: string, content: string) {
-    console.log("creatingFile, input: ", path, content);
     managedFileSystem.addFile(path, content);
     setEditedFiles('created', path);
 
@@ -289,13 +288,13 @@ export default function useManageFileState(folder: string) {
     _setActiveFile(optimisticActiveFile.current);
   }
 
-  function clearEditedFiles() {
+  const clearEditedFiles = useCallback(() => {
     setEditedFiles('clear', '');
-  }
+  }, [setEditedFiles])
 
   return {
     allFiles: managedFileSystem.dir,
-    loadFiles: managedFileSystem.loadDir,
+    loadFiles: managedFileSystem.pullFileSystem,
     activeFile,
     optimisticActiveFile: optimisticActiveFile.current,
     optimisticEditedFiles: optimisticEditedFiles.current,

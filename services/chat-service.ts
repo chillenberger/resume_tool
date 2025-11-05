@@ -24,7 +24,7 @@ async function chat(formData: FormData): Promise<ChatResponse> {
 
   console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson });
 
-  let response = await myAgentInstance.run(query, previousResponseId);
+  const response = await myAgentInstance.run(query, previousResponseId);
   if( !response?.finalOutput ) {
     throw new Error("No response from agent");
   }

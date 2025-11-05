@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, memo } from 'react';
 
 // themes: water as highest good, finding low places, grace without force
 // visualization: ASCII characters flow like water, seeking their natural level without effort
@@ -170,10 +170,9 @@ const WaterAsciiAnimation: React.FC<{rows: number, cols: number}> = ({rows, cols
   );
 };
 
-const WaterAscii = (props: {className: string}) => {
+const WaterAscii = memo((props: {className: string}) => {
   const [waterSize, setWaterSize] = useState<{rows: number, cols: number}>({rows: 0, cols: 0});
   const waterContainerRef = useRef<HTMLDivElement>(null);
-
 
   const updateWaterSize = useCallback(() => {
     if (waterContainerRef.current) {
@@ -220,6 +219,6 @@ const WaterAscii = (props: {className: string}) => {
   return (
     <div ref={waterContainerRef} className={props.className}><WaterAsciiAnimation rows={waterSize.rows} cols={waterSize.cols} /></div>
   );
-}
+})
 
 export default WaterAscii;

@@ -36,10 +36,8 @@ export default function ChatWindow({
 
   // On response clear local edited files tracker and reload all files if changes by chat. 
   useEffect(() => {
-    console.log("Chat conversation updated, checking for file changes.");
     clearEditedFiles();
     const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.file_actions;
-    console.log("Last chat response file actions:", lastChatResponseFiles);
     if ( lastChatResponseFiles ) loadDir();
   }, [conversation])
 

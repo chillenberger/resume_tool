@@ -1,6 +1,6 @@
 import { chat, getChatLog, initializeAgent } from '../services/chat-service';
 import { ChatResponse, Conversation } from '../types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { FileAction } from '../types';
 
 export default function useChat(projectDirectory: string) {
@@ -12,9 +12,9 @@ export default function useChat(projectDirectory: string) {
   
   useEffect(() => {
     initializeAgent(projectDirectory);
-  }, [])
+  }, [projectDirectory]) // Re-initialize agent when project directory changes
 
-  function chatRequest(userQuery: string, projectName: string, fileActions: {[key: string]: FileAction}) {
+  const chatRequest = useCallback(async (userQuery: string, projectName: string, fileActions: {[key: string]: FileAction}) => {
     setIsLoading(true);
 
     const formData = new FormData();
@@ -31,13 +31,14 @@ export default function useChat(projectDirectory: string) {
     .then((resp: ChatResponse) => {
       setResponseId(resp.lastResponseId);
 
-      const newConversation: Conversation = {
-        request: userQuery,
-        response: resp
-      }
-
-      setConversation([...conversation, newConversation]);
-      setChatIndex(conversation.length); // +1 for new entry but -1 for 0 index.
+      setConversation((prevConversation) => {
+        const newConversation: Conversation = {
+          request: userQuery,
+          response: resp
+        };
+        setChatIndex(prevConversation.length); // +1 for new entry but -1 for 0 index.
+        return [...prevConversation, newConversation];
+      });
     })
     .catch(error => {
       setError("Error submitting chat request");
@@ -45,9 +46,9 @@ export default function useChat(projectDirectory: string) {
     .finally(() => {
       setIsLoading(false);
     });
-  }
+  }, [responseId]); // responseId is used in the function
 
-  function loadChatByProjectName(projectName: string) {
+  const loadChatByProjectName = useCallback((projectName: string) => {
     setIsLoading(true);
     getChatLog(projectName).then(logs => {
       setConversation(logs);
@@ -62,7 +63,7 @@ export default function useChat(projectDirectory: string) {
     .finally(() => {
       setIsLoading(false);
     });
-  }
+  }, []); // No dependencies - projectName is a parameter
 
   return {
     conversation,

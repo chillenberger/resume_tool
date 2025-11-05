@@ -36,7 +36,7 @@ async function createNewProject(projectName: string) {
   }
 }
 
-async function getDirContents(folder: string): Promise<Dir> {
+async function getFileSystem(folder: string): Promise<Dir> {
   return new Promise((resolve, reject) => {
     readdir(path.join(rootDir, folder), (err, files) => {
       if (err) {
@@ -69,7 +69,7 @@ async function getDirContents(folder: string): Promise<Dir> {
             });
           } else {
             // It's a directory, recurse into it
-            getDirContents(path.join(folder, file)).then(subDirs => {
+            getFileSystem(path.join(folder, file)).then(subDirs => {
               root.children.push({ title: file, children: subDirs.children });
               fileResolve();
             }).catch(fileReject);
@@ -87,8 +87,8 @@ async function getDirContents(folder: string): Promise<Dir> {
   });
 }
 
-async function syncServerToDir(dir: Dir, folder: string) {
-  const serverDir = await getDirContents(folder);
+async function setFileSystem(dir: Dir, folder: string) {
+  const serverDir = await getFileSystem(folder);
 
   // Delete files that are on server but not in dir
   for ( const serverFile of serverDir.children ) {
@@ -96,7 +96,7 @@ async function syncServerToDir(dir: Dir, folder: string) {
     if ( !file ) {
       await deleteFile(serverFile.title, folder);
     } else if ( 'children' in serverFile && 'children' in file ) {
-      await syncServerToDir(file, path.join(folder, file.title));
+      await setFileSystem(file, path.join(folder, file.title));
     }
   }
 
@@ -112,14 +112,14 @@ async function syncServerToDir(dir: Dir, folder: string) {
         // Directory does not exist, create it
         fs.mkdirSync(path.join(rootDir, subFolder));
       }
-      await syncServerToDir(file, subFolder);
+      await setFileSystem(file, subFolder);
     }
   }
 }
 
 async function updateFile(doc: Doc, folder: string) {
   const filePath = path.join(rootDir, folder, doc.title);
-  console.log(`updatingFile at ${filePath} with: ${doc.content}`);
+  console.log(`updatingFile at ${filePath}`);
   try {
     writeFileSync(filePath, doc.content, { flag: 'w' });
   } catch (error) {
@@ -166,4 +166,4 @@ async function exportHtmlToPdf(formData: FormData) {
   });
 }
 
-export { exportHtmlToPdf, deleteFile, getDirContents, syncServerToDir, createNewProject};
+export { exportHtmlToPdf, deleteFile, getFileSystem, setFileSystem, createNewProject};
