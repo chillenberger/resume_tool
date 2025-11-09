@@ -6,7 +6,9 @@ import path from 'path';
 import { Dir, Doc } from '../types';
 import { readFile, readdir } from 'fs';
 import exec from 'child_process';
-import {flattenDir} from '@/lib/file';
+import { flattenDir } from '@/lib/file';
+
+// import { FileSystem } from '@/lib/file';
 
 const rootDir = path.join(process.cwd(), 'public', 'projects');
 const outputRoot = path.join(process.cwd(), 'public', 'outputs');
@@ -119,7 +121,6 @@ async function setFileSystem(dir: Dir, folder: string) {
 
 async function updateFile(doc: Doc, folder: string) {
   const filePath = path.join(rootDir, folder, doc.title);
-  console.log(`updatingFile at ${filePath}`);
   try {
     writeFileSync(filePath, doc.content, { flag: 'w' });
   } catch (error) {
@@ -166,4 +167,142 @@ async function exportHtmlToPdf(formData: FormData) {
   });
 }
 
-export { exportHtmlToPdf, deleteFile, getFileSystem, setFileSystem, createNewProject};
+
+
+
+
+
+
+async function getFileSystemTest(folder: string): Promise<Dir> {
+  console.log(folder);
+  return new Promise((resolve, reject) => {
+    readdir(folder, (err, files) => {
+      if (err) {
+        console.error(`Error reading ${folder} directory:`, err);
+        return reject(err);
+      }
+
+      // Filter out system files and hidden files
+      const validFiles = files.filter(file => 
+        !file.startsWith('.') && 
+        !file.startsWith('~') &&
+        file.length > 0
+      );
+
+      const root: Dir = { title: path.basename(folder), children: [] };
+
+      // Create promises for reading each file
+      const fileReadPromises = validFiles.map(file => {
+        return new Promise<void>((fileResolve, fileReject) => {
+          const fullPath = path.join(folder, file);
+          if( statSync(fullPath).isFile()) {
+            readFile(fullPath, (err, data) => {
+              if (err) {
+                console.error(`Error reading file ${fullPath}:`, err);
+                fileReject(err);
+              } else {
+                root.children.push({ title: file, content: data.toString() });
+                fileResolve();
+              }
+            });
+          } else {
+            // It's a directory, recurse into it
+            getFileSystemTest(path.join(folder, file)).then(subDirs => {
+              root.children.push({ title: file, children: subDirs.children });
+              fileResolve();
+            }).catch(fileReject);
+          }
+        });
+      });
+
+      // Wait for all files to be read before resolving
+      Promise.all(fileReadPromises)
+        .then(() => {
+          resolve(root);
+        })
+        .catch(reject);
+    });
+  });
+}
+
+async function setFileSystemTest(dir: Dir, folder: string) {
+  console.log(folder, flattenDir(dir))
+  const serverDir = await getFileSystemTest(folder);
+
+  // Delete files that are on server but not in dir
+  for ( const serverFile of serverDir.children ) {
+    const file = dir.children.find(f => f.title === serverFile.title);
+    if ( !file ) {
+      await deleteFileTest(serverFile.title, folder);
+    } else if ( 'children' in serverFile && 'children' in file ) {
+      await setFileSystemTest(file, path.join(folder, file.title));
+    }
+  }
+
+  // Update or add files from dir to server
+  for ( const file of dir.children ) {
+    if ( 'content' in file ) {
+      await updateFileTest(file, folder);
+    } else if ( 'children' in file ) {
+      const subFolder = path.join(folder, file.title);
+      try {
+        statSync(subFolder);
+      } catch (error) {
+        // Directory does not exist, create it
+        fs.mkdirSync(subFolder);
+      }
+      await setFileSystemTest(file, subFolder);
+    }
+  }
+}
+
+async function deleteFileTest(title: string, folder: string) {
+  const filePath = path.join(folder, title);
+  try {
+    unlinkSync(filePath);
+    console.log(`Successfully deleted ${title}`);
+  } catch (error) {
+    console.error(`Error deleting file ${title} in ${filePath}:`, error);
+  }
+}
+
+async function updateFileTest(doc: Doc, folder: string) {
+  const filePath = path.join(folder, doc.title);
+  try {
+    writeFileSync(filePath, doc.content, { flag: 'w' });
+  } catch (error) {
+    console.error(`Error updating file ${doc.title} in ${filePath}:`, error);
+  }
+}
+
+async function exportHtmlToPdfTest(formData: FormData, folder: string) {
+  const doc = formData.get('doc') as string;
+  let docName = formData.get('docName') as string || `document`;
+  
+  if ( !doc || !docName ) {
+    console.error('No HTML content provided');
+    return;
+  }
+
+  docName = docName.split('.')[0];
+
+  const timeStamp = Date.now();
+  const outputFilePath = path.join(folder, `${docName}.pdf`);
+  const tempFilePath = path.join(folder, `${docName}_${timeStamp}.html`);
+
+  const command = `html2pdf ${tempFilePath} --background --output ${outputFilePath}`;
+  writeFileSync(tempFilePath, doc);
+
+  exec.exec(command, (error, stdout, stderr) => {
+
+    unlinkSync(tempFilePath);
+    if (error) {
+      console.error(`Error executing command: ${error}`);
+      return;
+    }
+    console.log(`Command output: ${stdout}`);
+  });
+}
+
+
+export { exportHtmlToPdf, deleteFile, getFileSystem, setFileSystem, createNewProject, getFileSystemTest, setFileSystemTest, deleteFileTest, exportHtmlToPdfTest };

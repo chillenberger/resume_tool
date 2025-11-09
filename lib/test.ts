@@ -12,7 +12,6 @@ describe('test flattenDir', () => {
 describe('test expandDir', () => {
   test('make a dir from db', () => {
     const dir = expandDir(TestDB);
-    if ( dir ) console.log("dir: ", flattenDir(dir));
     expect(dir).toEqual(TestDir);
   })
 })

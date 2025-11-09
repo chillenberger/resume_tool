@@ -1,6 +1,10 @@
 
 import { Dir, Doc, File, EditorTypes } from '../types';
 import path from 'path';
+import { writeFileSync, unlinkSync, statSync, createReadStream } from 'fs';
+import fs from 'fs';
+import { readFile, readdir } from 'fs';
+import exec from 'child_process';
 
 function flattenDir(item: Dir | Doc, path: string[] = [], files: File[] = []): File[] {
   if( 'content' in item ) {
@@ -57,7 +61,6 @@ function readFileInDir(fullPath: string, rootDir: Dir): File | null {
 }
 
 function createFileInDir(file: File, dir: Dir) {
-  console.log(file, dir);
   let dirName = path.dirname(file.path);
   let docTitle = path.basename(file.path);
   

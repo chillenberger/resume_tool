@@ -1,7 +1,6 @@
-import { chat, getChatLog, initializeAgent } from '../services/chat-service';
-import { ChatResponse, Conversation } from '../types';
+import { chat, getChatLog, initializeAgent } from '@/services/chat-service';
+import { ChatResponse, Conversation, FileAction } from '@/types';
 import { useEffect, useState, useCallback } from 'react';
-import { FileAction } from '../types';
 
 export default function useChat(projectDirectory: string) {
   const [conversation, setConversation] = useState<Conversation[]>([]);
