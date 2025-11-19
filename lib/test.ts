@@ -1,4 +1,4 @@
-import { flattenDir, expandDir, findDir, deleteFileFromDir, createFileInDir, readFileInDir } from "@/lib/file";
+import { flattenDir, expandDir, findDir, deleteFileFromDir, createFileInDir, readFileInDir, alphabetizeDir } from "@/lib/file";
 import {describe, expect, test} from '@jest/globals';
 import {Dir, File} from '@/types/index';
 
@@ -78,8 +78,16 @@ describe('createFileInDir', () => {
     let foundDoc = readFileInDir(file.path, dirCopy);
     expect(file.content).toEqual(foundDoc?.content);
   })
-
 })
+
+describe('alphabetizeDir', () => {
+  test('alphabetize directory', () => {
+    const dirCopy: Dir = JSON.parse(JSON.stringify(TestDir));
+    alphabetizeDir(dirCopy);
+    expect(dirCopy.children[1].title).toBe('subdir1');
+    expect(dirCopy.children[2].title).toBe('subdir2');
+  });
+});
 
 const TestDir: Dir = { title: 'root', children: [
   { title: 'file1.txt', content: 'This is file 1' },

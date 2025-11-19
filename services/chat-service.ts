@@ -6,15 +6,17 @@ import { createChatLog, getChatLogsByProject } from './db-service';
 
 let myAgentInstance: MyAgent | null = null;
 
-function initializeAgent(projectName: string) {
-  const myAgent = new MyAgent(projectName);
+function initializeAgent(projectName: string, folders: string[]) {
+  console.log('initializing Agent')
+  const myAgent = new MyAgent(projectName, folders);
   myAgentInstance = myAgent;
 }
 
 async function chat(formData: FormData): Promise<ChatResponse> {
+  console.log('chatService here')
   const userQuery = formData.get('userQuery') as string;
   const previousResponseId = formData.get('previousResponseId') as string | null;
-
+  
   const fileActions = formData.get('fileActionsTaken') as string | null;
   const fileActionsJson: {[key: string]: FileAction} = fileActions ? JSON.parse(fileActions) as {[key: string]: FileAction} : {};
 
@@ -75,7 +77,7 @@ export {chat, getChatLog, initializeAgent};
 const testResponse = {
   response: {
     message: "This is a test response",
-    file_actions: [{path: "test/chat-new.md", action: "created"}] as FileActionTrack[],
+    file_actions: [] as FileActionTrack[],
     special_instructions: "These are some special instructions."
   },
   lastResponseId: "test-response-id",

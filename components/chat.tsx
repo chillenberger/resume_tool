@@ -11,34 +11,39 @@ import {
   faCircleExclamation
 } from '@fortawesome/free-solid-svg-icons';
 
+import { DirEditRsp } from '@/hooks/use-file-manager';
+
 interface ChatWindowProps {
   loadDir: () => void;
-  project: string
-  editedFiles: {[path: string]: 'created' | 'updated' | 'deleted'};
+  project: string;
+  folders: string[] | null;
   clearEditedFiles: () => void;
-  onRequest?: () => void;
+  onRequest?: () => DirEditRsp;
 }
 
 export default function ChatWindow({
     loadDir,
     project,
-    editedFiles,
     clearEditedFiles,
     onRequest,
+    folders
 }: ChatWindowProps) {
-  const { conversation, chatIndex, setChatIndex, responseId, isLoading: chatLoading, chatRequest, error: chatError, loadChatByProjectName } = useChat(project);
+  const { conversation, chatIndex, setChatIndex, responseId, isLoading: chatLoading, chatRequest, error: chatError, loadChatByProjectName } = useChat(project, folders);
 
   const isLoading = chatLoading;
 
-  useEffect(() => {
-    loadChatByProjectName(project);
-  }, [])
+  // useEffect(() => {
+  //   loadChatByProjectName(project);
+  // }, [])
 
   // On response clear local edited files tracker and reload all files if changes by chat. 
   useEffect(() => {
     clearEditedFiles();
     const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.file_actions;
-    if ( lastChatResponseFiles ) loadDir();
+    if ( lastChatResponseFiles ) {
+      console.log("Files were changed by chat response, reloading directory:", lastChatResponseFiles);
+      loadDir()
+    };
   }, [conversation])
 
   async function handleNewRequest(event: React.FormEvent<HTMLFormElement>) {
@@ -48,7 +53,7 @@ export default function ChatWindow({
     event.currentTarget.reset();
     const userRequest = formData.get('userQuery') as string;
 
-    onRequest && onRequest();
+    let editedFiles = onRequest ? onRequest().nextEditedFilesState : {};
 
     chatRequest(userRequest, project, editedFiles);
   }

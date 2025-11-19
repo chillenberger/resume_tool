@@ -1,10 +1,6 @@
 
 import { Dir, Doc, File, EditorTypes } from '../types';
 import path from 'path';
-import { writeFileSync, unlinkSync, statSync, createReadStream } from 'fs';
-import fs from 'fs';
-import { readFile, readdir } from 'fs';
-import exec from 'child_process';
 
 function flattenDir(item: Dir | Doc, path: string[] = [], files: File[] = []): File[] {
   if( 'content' in item ) {
@@ -84,6 +80,7 @@ function createFileInDir(file: File, dir: Dir) {
   }
 
   dir.children.push({title: docTitle, content: file.content});
+  alphabetizeDir(dir);
 }
 
 function updateFileInDir(file: File, dir: Dir) {
@@ -116,4 +113,18 @@ function getContentTypeFromPath(filePath: string): EditorTypes {
   return 'html';
 }
 
-export{ flattenDir, expandDir, findDir, readFileInDir, createFileInDir, updateFileInDir, deleteFileFromDir, getContentTypeFromPath }
+function alphabetizeDir(dir: Dir) {
+  dir.children.sort((a, b) => {
+    if (a.title < b.title) return -1;
+    if (a.title > b.title) return 1;
+    return 0;
+  });
+
+  for (const child of dir.children) {
+    if ('children' in child) {
+      alphabetizeDir(child);
+    }
+  }
+}
+
+export{ flattenDir, expandDir, findDir, readFileInDir, createFileInDir, updateFileInDir, deleteFileFromDir, getContentTypeFromPath, alphabetizeDir };

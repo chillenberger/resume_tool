@@ -2,7 +2,7 @@ import { chat, getChatLog, initializeAgent } from '@/services/chat-service';
 import { ChatResponse, Conversation, FileAction } from '@/types';
 import { useEffect, useState, useCallback } from 'react';
 
-export default function useChat(projectDirectory: string) {
+export default function useChat(projectDirectory: string, folders: string[] | null) {
   const [conversation, setConversation] = useState<Conversation[]>([]);
   const [responseId, setResponseId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -10,7 +10,7 @@ export default function useChat(projectDirectory: string) {
   const [chatIndex, setChatIndex] = useState<number>(0);
   
   useEffect(() => {
-    initializeAgent(projectDirectory);
+    if( folders ) initializeAgent(projectDirectory, folders);
   }, [projectDirectory]) // Re-initialize agent when project directory changes
 
   const chatRequest = useCallback(async (userQuery: string, projectName: string, fileActions: {[key: string]: FileAction}) => {
@@ -22,9 +22,10 @@ export default function useChat(projectDirectory: string) {
     if( responseId ) {
       formData.append('previousResponseId', responseId);
     }
-    if( Object.keys(fileActions).length > 0 ) {
+    if( fileActions && Object.keys(fileActions).length > 0 ) {
       formData.append('fileActionsTaken', JSON.stringify(fileActions)); 
     }
+
 
     chat(formData)
     .then((resp: ChatResponse) => {
@@ -45,7 +46,7 @@ export default function useChat(projectDirectory: string) {
     .finally(() => {
       setIsLoading(false);
     });
-  }, [responseId]); // responseId is used in the function
+  }, [responseId]);
 
   const loadChatByProjectName = useCallback((projectName: string) => {
     setIsLoading(true);
@@ -62,7 +63,7 @@ export default function useChat(projectDirectory: string) {
     .finally(() => {
       setIsLoading(false);
     });
-  }, []); // No dependencies - projectName is a parameter
+  }, []); 
 
   return {
     conversation,

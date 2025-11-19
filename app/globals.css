@@ -33,6 +33,10 @@ body {
   min-height: 100vh;
 }
 
+input {
+  all: unset;
+}
+
 textarea.chat-input {
   all: unset;
   color: var(--color-gray-800);
@@ -51,4 +55,8 @@ textarea.chat-input {
 .ck-editor__editable {
   height: 100%;
   overflow: auto;
+}
+
+.flex-grow {
+  flex: 1 !important;
 }
