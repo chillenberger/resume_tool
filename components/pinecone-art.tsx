@@ -287,7 +287,7 @@ const PineconeDelicate = () => {
   }, []);
 
   return (
-    <div className="w-full h-screen flex justify-center items-center bg-[transparent]">
+    <div className="w-full h-full flex justify-center items-center bg-[transparent]">
       <div 
         ref={containerRef}
         className="bg-[transparent]"

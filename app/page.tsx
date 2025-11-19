@@ -28,7 +28,7 @@ export default function Home() {
 
   return (
     <div className="flex justify-center flex-col pb-5 h-[100vh]">
-      <div className="absolute z-0 top-0 w-full"><PineconeDelicate /></div>
+      <div className="absolute  h-full z-0 top-0 w-full"><PineconeDelicate /></div>
       <div className="flex justify-center flex-col w-[50%] m-auto gap-2 z-1">
         <div className="text-neutral-400">FilePath: {rootPath}</div>
         <UriForm rootPath={rootPath} />
@@ -49,14 +49,12 @@ function UriForm ({rootPath}: {rootPath?: string}) {
     const uris = [];
     for ( let i = 1; i <= inputCount; i++ ) {
       const filePath = formRef.current?.elements.namedItem('filePath-' + i) as HTMLInputElement;
-      console.log("filePath:", filePath.value);
       if ( filePath && filePath.value ) {
         const fullFilePath =rootPath + (filePath.value.startsWith("/") ? filePath.value.substring(1) : filePath.value);
         uris.push(fullFilePath);
       }
       const encodedURI = encodeURIComponent(JSON.stringify(uris));
       const uri = "/chat" + "?filePath=" + encodedURI;
-      // console.log("Navigating to:", uri);
       router.push(uri)
     }
     

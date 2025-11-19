@@ -54,7 +54,6 @@ export default function ChatPage() {
   }, [activeFile, markdownEditor, htmlEditor]);
 
   const handleSwitchActiveFile = useCallback((filePath: string) => {
-    console.log('Switching active file to:', filePath, activeFile?.path);
     updateActiveFile(extractFileContent())
     switchActiveFile(filePath);
   }, [extractFileContent, switchActiveFile]);
@@ -100,7 +99,7 @@ export default function ChatPage() {
         </div>
       </div>
       <div className="w-full">
-        <div className="w-full z-0 flex flex-col">
+        <div className="w-full  h-full z-0 flex flex-col">
           <h1 className="mb-2">{activeFile ? activeFile.path : 'Select File / Loading...'}</h1>
           { 
             activeFile ? 

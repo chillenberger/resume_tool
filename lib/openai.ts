@@ -42,7 +42,7 @@ class MyAgent {
       model: 'gpt-5',
       instructions: SYSTEM_PROMPT,
       outputType: ChatSchema,
-      mcpServers: [mcpServer],
+      mcpServers: [mcpServer]
     });
     return result;
   }
@@ -62,7 +62,7 @@ class MyAgent {
     console.log("Running agent with query:", userQuery);
 
     try {
-      const stream = await run(this.agent, userQuery, { previousResponseId: previousResponseId ? previousResponseId : undefined, stream: true });
+      const stream = await run(this.agent, userQuery, { previousResponseId: previousResponseId ? previousResponseId : undefined, stream: true, maxTurns: 20 });
       for await (const event of stream) {
         console.log("Stream event: ", event.type);
         // // these are the raw events from the model

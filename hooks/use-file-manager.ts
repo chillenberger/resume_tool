@@ -220,7 +220,7 @@ function useManageActiveFile(dir: Dir, editedFiles: EditedFiles, updateFile: ((f
   }, [dir])
 
   const updateActiveFileState = useCallback((action: 'reset' | 'next') => {
-    if (Date.now() - debounce.current < 500) {
+    if (Date.now() - debounce.current < 100) {
       return;
     };
     debounce.current = Date.now();
@@ -239,7 +239,6 @@ function useManageActiveFile(dir: Dir, editedFiles: EditedFiles, updateFile: ((f
     let dirEditRsp = {nextDirState: dir, nextEditedFilesState: editedFiles, success: true};
     let nextActiveFileState = activeFile;
     if ( activeFileState.current === 'updated' && activeFile ) {
-      
       const nextContent = typeof content === 'string' ? content : content();
       nextActiveFileState = {path: activeFile.path, content: nextContent};
       setActiveFile(nextActiveFileState);
