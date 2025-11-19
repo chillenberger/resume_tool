@@ -1,16 +1,16 @@
 'use server'
 
-import { writeFileSync, unlinkSync, statSync, createReadStream } from 'fs';
+import { writeFileSync, unlinkSync, statSync } from 'fs';
 import fs from 'fs';
 import path from 'path';
 import { Dir, Doc } from '../types';
 import { readFile, readdir } from 'fs';
 import exec from 'child_process';
-import {flattenDir} from '@/lib/file';
+import { flattenDir } from '@/lib/file';
+
+// import { FileSystem } from '@/lib/file';
 
 const rootDir = path.join(process.cwd(), 'public', 'projects');
-const outputRoot = path.join(process.cwd(), 'public', 'outputs');
-const tempRoot = path.join(process.cwd(), 'public', 'temp');
 const resumeDataRoot = path.join(process.cwd(), 'public', 'resume_data');
 const templateRoot = path.join(process.cwd(), 'public', 'templates');
 
@@ -36,9 +36,14 @@ async function createNewProject(projectName: string) {
   }
 }
 
-async function getDirContents(folder: string): Promise<Dir> {
+async function getRootPath() {
+  return process.env.ROOT_DIR;
+}
+
+async function getFileSystem(folder: string): Promise<Dir> {
+  console.log(folder);
   return new Promise((resolve, reject) => {
-    readdir(path.join(rootDir, folder), (err, files) => {
+    readdir(folder, (err, files) => {
       if (err) {
         console.error(`Error reading ${folder} directory:`, err);
         return reject(err);
@@ -51,12 +56,12 @@ async function getDirContents(folder: string): Promise<Dir> {
         file.length > 0
       );
 
-      const root: Dir = { title: folder, children: [] };
+      const root: Dir = { title: path.basename(folder), children: [] };
 
       // Create promises for reading each file
       const fileReadPromises = validFiles.map(file => {
         return new Promise<void>((fileResolve, fileReject) => {
-          const fullPath = path.join(rootDir, folder, file);
+          const fullPath = path.join(folder, file);
           if( statSync(fullPath).isFile()) {
             readFile(fullPath, (err, data) => {
               if (err) {
@@ -69,7 +74,7 @@ async function getDirContents(folder: string): Promise<Dir> {
             });
           } else {
             // It's a directory, recurse into it
-            getDirContents(path.join(folder, file)).then(subDirs => {
+            getFileSystem(path.join(folder, file)).then(subDirs => {
               root.children.push({ title: file, children: subDirs.children });
               fileResolve();
             }).catch(fileReject);
@@ -87,8 +92,9 @@ async function getDirContents(folder: string): Promise<Dir> {
   });
 }
 
-async function syncServerToDir(dir: Dir, folder: string) {
-  const serverDir = await getDirContents(folder);
+async function setFileSystem(dir: Dir, folder: string) {
+  console.log(folder, flattenDir(dir))
+  const serverDir = await getFileSystem(folder);
 
   // Delete files that are on server but not in dir
   for ( const serverFile of serverDir.children ) {
@@ -96,7 +102,7 @@ async function syncServerToDir(dir: Dir, folder: string) {
     if ( !file ) {
       await deleteFile(serverFile.title, folder);
     } else if ( 'children' in serverFile && 'children' in file ) {
-      await syncServerToDir(file, path.join(folder, file.title));
+      await setFileSystem(file, path.join(folder, file.title));
     }
   }
 
@@ -107,28 +113,18 @@ async function syncServerToDir(dir: Dir, folder: string) {
     } else if ( 'children' in file ) {
       const subFolder = path.join(folder, file.title);
       try {
-        statSync(path.join(rootDir, subFolder));
+        statSync(subFolder);
       } catch (error) {
         // Directory does not exist, create it
-        fs.mkdirSync(path.join(rootDir, subFolder));
+        fs.mkdirSync(subFolder);
       }
-      await syncServerToDir(file, subFolder);
+      await setFileSystem(file, subFolder);
     }
   }
 }
 
-async function updateFile(doc: Doc, folder: string) {
-  const filePath = path.join(rootDir, folder, doc.title);
-  console.log(`updatingFile at ${filePath} with: ${doc.content}`);
-  try {
-    writeFileSync(filePath, doc.content, { flag: 'w' });
-  } catch (error) {
-    console.error(`Error updating file ${doc.title} in ${filePath}:`, error);
-  }
-}
-
 async function deleteFile(title: string, folder: string) {
-  const filePath = path.join(rootDir, folder, title);
+  const filePath = path.join(folder, title);
   try {
     unlinkSync(filePath);
     console.log(`Successfully deleted ${title}`);
@@ -137,7 +133,16 @@ async function deleteFile(title: string, folder: string) {
   }
 }
 
-async function exportHtmlToPdf(formData: FormData) {
+async function updateFile(doc: Doc, folder: string) {
+  const filePath = path.join(folder, doc.title);
+  try {
+    writeFileSync(filePath, doc.content, { flag: 'w' });
+  } catch (error) {
+    console.error(`Error updating file ${doc.title} in ${filePath}:`, error);
+  }
+}
+
+async function exportHtmlToPdf(formData: FormData, folder: string) {
   const doc = formData.get('doc') as string;
   let docName = formData.get('docName') as string || `document`;
   
@@ -149,8 +154,8 @@ async function exportHtmlToPdf(formData: FormData) {
   docName = docName.split('.')[0];
 
   const timeStamp = Date.now();
-  const outputFilePath = path.join(outputRoot, `${docName}.pdf`);
-  const tempFilePath = path.join(tempRoot, `${docName}_${timeStamp}.html`);
+  const outputFilePath = path.join(folder, `${docName}.pdf`);
+  const tempFilePath = path.join(folder, `${docName}_${timeStamp}.html`);
 
   const command = `html2pdf ${tempFilePath} --background --output ${outputFilePath}`;
   writeFileSync(tempFilePath, doc);
@@ -166,4 +171,5 @@ async function exportHtmlToPdf(formData: FormData) {
   });
 }
 
-export { exportHtmlToPdf, deleteFile, getDirContents, syncServerToDir, createNewProject};
+
+export { getFileSystem, setFileSystem, deleteFile, exportHtmlToPdf, createNewProject, getRootPath };

@@ -18,12 +18,14 @@ const SYSTEM_PROMPT = `You are a professional career coach that lives inside my 
 class MyAgent {
   private agent: Agent<unknown, typeof ChatSchema>;
   private mcpServer: MCPServerStdio;
+  // private mcpReadOnlyServer: MCPServerStdio;
   projectName: string;
 
-  constructor(projectName: string) {
-    console.log("Initializing MCP server for project:", projectName);
+  constructor(projectName: string, folders: string[]) {
+    console.log("Initializing MCP server for project:", folders);
     this.projectName = projectName;
-    this.mcpServer = this.CreateServer();
+    this.mcpServer = this.CreateServer(folders);
+    // this.mcpReadOnlyServer = this.CreateReadOnlyServer(folder);
     this.agent = this.CreateAgent(this.mcpServer);
 
     this.mcpServer.connect();
@@ -39,23 +41,24 @@ class MyAgent {
       name: 'FS MCP Assistant',
       model: 'gpt-5',
       instructions: SYSTEM_PROMPT,
-      mcpServers: [mcpServer],
       outputType: ChatSchema,
+      mcpServers: [mcpServer],
     });
     return result;
   }
 
-  private CreateServer() {
-    const projectDir = path.join(process.cwd(), '/public/projects/' + this.projectName);
+  private CreateServer(folders: string[]) {
+    const projectDirs = folders;
 
-    return new MCPServerStdio({
+    const server = new MCPServerStdio({
       name: 'Filesystem MCP Server, via npx',
-      fullCommand: `npx -y @modelcontextprotocol/server-filesystem ${projectDir}`,
-    })
-  }
+      fullCommand: `npx -y ${process.env.MCP_SERVER_PATH} ${projectDirs.join(' ')}`,
+    });
+    server.connect();
+    return server
+  };
 
   async run(userQuery: string, previousResponseId: string | null) {
-
     console.log("Running agent with query:", userQuery);
 
     try {

@@ -1,9 +1,8 @@
-import { chat, getChatLog, initializeAgent } from '../services/chat-service';
-import { ChatResponse, Conversation } from '../types';
-import { useEffect, useState } from 'react';
-import { FileAction } from '../types';
+import { chat, getChatLog, initializeAgent } from '@/services/chat-service';
+import { ChatResponse, Conversation, FileAction } from '@/types';
+import { useEffect, useState, useCallback } from 'react';
 
-export default function useChat(projectDirectory: string) {
+export default function useChat(projectDirectory: string, folders: string[] | null) {
   const [conversation, setConversation] = useState<Conversation[]>([]);
   const [responseId, setResponseId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -11,10 +10,10 @@ export default function useChat(projectDirectory: string) {
   const [chatIndex, setChatIndex] = useState<number>(0);
   
   useEffect(() => {
-    initializeAgent(projectDirectory);
-  }, [])
+    if( folders ) initializeAgent(projectDirectory, folders);
+  }, [projectDirectory]) // Re-initialize agent when project directory changes
 
-  function chatRequest(userQuery: string, projectName: string, fileActions: {[key: string]: FileAction}) {
+  const chatRequest = useCallback(async (userQuery: string, projectName: string, fileActions: {[key: string]: FileAction}) => {
     setIsLoading(true);
 
     const formData = new FormData();
@@ -23,21 +22,23 @@ export default function useChat(projectDirectory: string) {
     if( responseId ) {
       formData.append('previousResponseId', responseId);
     }
-    if( Object.keys(fileActions).length > 0 ) {
+    if( fileActions && Object.keys(fileActions).length > 0 ) {
       formData.append('fileActionsTaken', JSON.stringify(fileActions)); 
     }
+
 
     chat(formData)
     .then((resp: ChatResponse) => {
       setResponseId(resp.lastResponseId);
 
-      const newConversation: Conversation = {
-        request: userQuery,
-        response: resp
-      }
-
-      setConversation([...conversation, newConversation]);
-      setChatIndex(conversation.length); // +1 for new entry but -1 for 0 index.
+      setConversation((prevConversation) => {
+        const newConversation: Conversation = {
+          request: userQuery,
+          response: resp
+        };
+        setChatIndex(prevConversation.length); // +1 for new entry but -1 for 0 index.
+        return [...prevConversation, newConversation];
+      });
     })
     .catch(error => {
       setError("Error submitting chat request");
@@ -45,9 +46,9 @@ export default function useChat(projectDirectory: string) {
     .finally(() => {
       setIsLoading(false);
     });
-  }
+  }, [responseId]);
 
-  function loadChatByProjectName(projectName: string) {
+  const loadChatByProjectName = useCallback((projectName: string) => {
     setIsLoading(true);
     getChatLog(projectName).then(logs => {
       setConversation(logs);
@@ -62,7 +63,7 @@ export default function useChat(projectDirectory: string) {
     .finally(() => {
       setIsLoading(false);
     });
-  }
+  }, []); 
 
   return {
     conversation,

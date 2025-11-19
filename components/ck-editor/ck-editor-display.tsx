@@ -8,11 +8,11 @@ import 'ckeditor5/ckeditor5.css';
 import 'ckeditor5-premium-features/ckeditor5-premium-features.css';
 
 interface DisplayEditorProps {
-  editorRef: {editorRef: React.MutableRefObject<Editor | null>, onUpdateCallback: (() => void) | undefined};
-  defaultContent: string;
+    editorHandle: { editorRef: React.MutableRefObject<Editor | null>, invokeUpdate: () => void };
+    defaultContent: string;
 }
 
-export default function DisplayEditor({editorRef, defaultContent}: DisplayEditorProps) {
+export default function DisplayEditor({editorHandle, defaultContent}: DisplayEditorProps) {
 
     return (
         <div className="w-[50rem]">
@@ -38,12 +38,12 @@ export default function DisplayEditor({editorRef, defaultContent}: DisplayEditor
                     }
                 } }
                 onReady={ (editor: Editor) => {
-                    editorRef.editorRef.current = editor;
+                    editorHandle.editorRef.current = editor;
+                    editorHandle.invokeUpdate(); // initial dispatch once
                 }}
                 onChange={() => {
-                    if ( editorRef?.onUpdateCallback ) {
-                        editorRef.onUpdateCallback();
-                    }
+                    // Invoke latest callback via stable handle (avoids recreating object each render)
+                    editorHandle.invokeUpdate();
                 }}
             />
         </div>

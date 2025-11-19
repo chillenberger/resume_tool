@@ -35,7 +35,7 @@ export const FileSchema = z.object({
 
 export const ChatSchema = z.object({
   message: z.string().describe('The recommended travel destination.'),
-  special_instructions: z.nullable(z.string()).describe('Any special instructions related to the response.'),
+  special_instructions: z.nullable(z.string()).describe('Any special instructions related to the response. Do not feel obligated to fill this out.'),
   file_actions: z.array(FileActionsTrackSchema).describe('The file actions that you took.'),
 });
 
@@ -64,3 +64,5 @@ export type Conversation = {
   request: string;
   response: ChatResponse;
 }
+
+export type EditorTypes = 'markdown' | 'html';
