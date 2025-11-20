@@ -24,11 +24,17 @@ export default function ChatPage() {
   const folders: string[] = JSON.parse(queryParams.get('filePath') || '[]');
   const projectDirs = folders.map( f => useManageFiles(f));
   const projectTitle = 'Virtual Directory';
-  const {virtualDir: dir, getEditedFiles, addFile, getFile, updateFile, deleteFile, pullFileSystem, clearEditedFiles} = useVirtualDirectory(projectTitle, projectDirs);
+  const {virtualDir: dir, getEditedFiles, addFile, getFile, updateFile, deleteFile, pullFileSystem, pushFileSystem, clearEditedFiles} = useVirtualDirectory(projectTitle, projectDirs);
   const {activeFile, update: updateActiveFile, switch_: switchActiveFile, updateActiveFileState} = useManageActiveFile(dir, getEditedFiles(), updateFile);
 
   const markdownEditor = useTipTapMarkdownEditor(() => updateActiveFileState('next'));
   const htmlEditor = useCKHtmlEditor(() => updateActiveFileState('next' ));
+
+  const addDirTest = () => {
+    const newFilePath = '/User/danielillenberger/Documents/job_hunting_resources/projects/test-3';
+    const newDir = useManageFiles(newFilePath);
+    projectDirs.push(newDir);
+  }
 
   const extractFileContent = useCallback(() => {
     if (!activeFile) return '';
@@ -59,7 +65,6 @@ export default function ChatPage() {
   }, [extractFileContent, switchActiveFile]);
 
   const handleOnFileDelete = useCallback((filePath: string) => {
-    console.log("Deleting file:", filePath);
     updateActiveFile(extractFileContent());
     deleteFile(filePath);
   }, [extractFileContent, deleteFile]);
@@ -81,17 +86,19 @@ export default function ChatPage() {
     console.log("TODO: Implement exportHtmlToPdf");
   }, [extractFileContent, getFile]);
 
-  const handleOnChatRequest = useCallback(() => {
+  const handleOnChatRequest = useCallback(async () => {
+    // Update the active file immediately, then flush changes to the server to avoid stale reads
     const rsp = updateActiveFile(extractFileContent());
-    // Always attach a fresh snapshot of edited files to avoid relying on rerenders
-    return { ...rsp, nextEditedFilesState: getEditedFiles() };
-  }, [extractFileContent, updateActiveFile, getEditedFiles]);
+    await pushFileSystem();
+    return rsp;
+  }, [extractFileContent, updateActiveFile, pushFileSystem]);
 
   return (
     <div className="flex flex-row m-5 text-stone-300">
       <div className="flex flex-col">
         <h1 className="mb-2"><Link href="/">New Project</Link></h1>
         <div className="p-2 bg-transparent rounded-md border border-neutral-50/10 me-8 h-[90vh]">
+          <button onClick={addDirTest}>Add Test Dir</button>
           <div className="flex flex-col gap-3 p-3 w-lg h-full">
             <FileTree dir={dir} onFileChange={handleSwitchActiveFile} onFileExport={handleOnFileExport} onFileDelete={handleOnFileDelete} onFileCreate={handleOnFileCreate} />
             <ChatWindow loadDir={pullFileSystem} project="test" folders={folders} clearEditedFiles={clearEditedFiles} onRequest={handleOnChatRequest}/>

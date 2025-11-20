@@ -18,7 +18,7 @@ interface ChatWindowProps {
   project: string;
   folders: string[] | null;
   clearEditedFiles: () => void;
-  onRequest?: () => DirEditRsp;
+  onRequest?: () => Promise<DirEditRsp>;
 }
 
 export default function ChatWindow({
@@ -53,7 +53,7 @@ export default function ChatWindow({
     event.currentTarget.reset();
     const userRequest = formData.get('userQuery') as string;
 
-    let editedFiles = onRequest ? onRequest().nextEditedFilesState : {};
+  const editedFiles = onRequest ? (await onRequest()).nextEditedFilesState : {};
 
     chatRequest(userRequest, project, editedFiles);
   }

@@ -54,6 +54,7 @@ type ManagedFileSystem = {
   deleteFile: (path: string) => DirEditRsp;
   addFile: (path: string, content: string) => DirEditRsp;
   pullFileSystem: () => Promise<DirEditRsp>;
+  pushFileSystem: () => Promise<void>;
   clearEditedFiles: () => void;
 }
 
@@ -183,6 +184,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
     deleteFile,
     addFile,
     pullFileSystem,
+    pushFileSystem,
     clearEditedFiles,
   }
 }
@@ -354,6 +356,10 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]) {
     return _consolidateDirRsp({nextDirState: virtualDir, nextEditedFilesState: getEditedFiles(), success: true});
   }
 
+  async function pushFileSystem(): Promise<void> {
+    await Promise.all(managedFileSystems.map(mfs => mfs.pushFileSystem()));
+  }
+
   function clearEditedFiles() {
     // Delegate to each managed FS to properly clear and trigger rerenders
     managedFileSystems.forEach(mfs => {
@@ -369,6 +375,7 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]) {
     deleteFile,
     addFile,
     pullFileSystem,
+    pushFileSystem,
     clearEditedFiles,
   };
 }
