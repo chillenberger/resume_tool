@@ -5,7 +5,7 @@ import {
   getFileSystem,
   setFileSystem,
 } from '@/services/file-service';
-import { Dir, File, FileAction } from '../types';
+import { Dir, File, FileAction } from '@/types';
 import { readFileInDir, createFileInDir, deleteFileFromDir, updateFileInDir, alphabetizeDir } from '@/lib/file';
 import path from 'path';
 import { flattenDir } from '@/lib/file';
@@ -45,7 +45,7 @@ function editedFilesReducer(state: { [key: string]: FileAction } = {}, action?: 
   }
 }
 
-type ManagedFileSystem = {
+export type ManagedFileSystem = {
   dir: Dir;
   editedFiles: EditedFiles;
   setDir: React.Dispatch<React.SetStateAction<Dir>>;
@@ -380,4 +380,96 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]) {
   };
 }
 
-export { useManageFiles, useManageActiveFile, useVirtualDirectory };
+
+
+// Hook to manage the currently active file being edited in any .
+function useManageActiveFileTest(dir: ManagedFileSystem[]) {
+  const [activeFile, setActiveFile] = useState<ActiveFile>(null);
+  // const [actionState, actionDispatch] = useReducer(activeFileReducer, "none");
+  const activeFileState = useRef<'none' | 'set' | 'updated'>("none");
+  // const debounce = useRef<number>(Date.now());
+  // Always read the latest dir inside callbacks to avoid stale-closure reads
+  // const latestDirRef = useRef<Dir>(dir);
+  // useEffect(() => { latestDirRef.current = dir; }, [dir]);
+
+  // // Keep active file in sync with directory when dir is updated externally.
+  // useEffect(() => {
+  //   // If no active file, nothing to sync; ensure editor update state is reset
+  //   if (!activeFile) {
+  //     updateActiveFileState('reset');
+  //     return;
+  //   }
+
+  //   const freshActiveFile = readFileInDir(activeFile.path, dir);
+  //   if (!freshActiveFile) {
+  //     // File no longer exists in the updated dir
+  //     setActiveFile(null);
+  //     updateActiveFileState('reset');
+  //     return;
+  //   }
+
+  //   // If content changed in the dir (e.g., after a pull), update the active file to reflect it
+  //   if (freshActiveFile.content !== activeFile.content) {
+  //     setActiveFile(freshActiveFile);
+  //   }
+  // }, [dir])
+
+  // const updateActiveFileState = useCallback((action: 'reset' | 'next') => {
+  //   if (Date.now() - debounce.current < 100) {
+  //     return;
+  //   };
+  //   debounce.current = Date.now();
+  //   if (action === 'reset') {
+  //     activeFileState.current = 'none';
+  //   } else if (action === 'next') {
+  //     if (activeFileState.current === 'none') {
+  //       activeFileState.current = 'set';
+  //     } else if (activeFileState.current === 'set') {
+  //       activeFileState.current = 'updated';
+  //     }
+  //   }
+  // }, []);
+
+  // function update(content: string | (() => string)): DirEditRsp {
+  //   let dirEditRsp = {nextDirState: dir, nextEditedFilesState: editedFiles, success: true};
+  //   let nextActiveFileState = activeFile;
+  //   if ( activeFileState.current === 'updated' && activeFile ) {
+  //     const nextContent = typeof content === 'string' ? content : content();
+  //     nextActiveFileState = {path: activeFile.path, content: nextContent};
+  //     setActiveFile(nextActiveFileState);
+  //     dirEditRsp = updateFile(nextActiveFileState.path, nextActiveFileState.content);
+  //   }
+  //   updateActiveFileState('reset');
+  //   return dirEditRsp;
+  // }
+
+  function switch_(path: string) {
+    // Use the most recent dir value to avoid reading stale content when invoked
+    console.log("Switching active file to:", path);
+
+    const dirName = path.split('/')[0];
+
+    console.log(dirName);
+
+    const pathMfs = dir.find(mfs => {
+      console.log(mfs.dir.title, mfs.dir.title === dirName);
+      return mfs.dir.title === dirName
+    });
+
+    console.log(pathMfs);
+
+    if ( !pathMfs ) return;
+
+    const file = readFileInDir(path, pathMfs.dir)
+    setActiveFile(file);
+  }
+
+  return {
+    activeFile, 
+    // update, 
+    switch_,
+    // updateActiveFileState,
+  }
+}
+
+export { useManageFiles, useManageActiveFile, useVirtualDirectory, useManageActiveFileTest };

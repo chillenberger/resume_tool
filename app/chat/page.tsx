@@ -30,12 +30,6 @@ export default function ChatPage() {
   const markdownEditor = useTipTapMarkdownEditor(() => updateActiveFileState('next'));
   const htmlEditor = useCKHtmlEditor(() => updateActiveFileState('next' ));
 
-  const addDirTest = () => {
-    const newFilePath = '/User/danielillenberger/Documents/job_hunting_resources/projects/test-3';
-    const newDir = useManageFiles(newFilePath);
-    projectDirs.push(newDir);
-  }
-
   const extractFileContent = useCallback(() => {
     if (!activeFile) return '';
     const contentType = getContentTypeFromPath(activeFile.path);
@@ -98,7 +92,6 @@ export default function ChatPage() {
       <div className="flex flex-col">
         <h1 className="mb-2"><Link href="/">New Project</Link></h1>
         <div className="p-2 bg-transparent rounded-md border border-neutral-50/10 me-8 h-[90vh]">
-          <button onClick={addDirTest}>Add Test Dir</button>
           <div className="flex flex-col gap-3 p-3 w-lg h-full">
             <FileTree dir={dir} onFileChange={handleSwitchActiveFile} onFileExport={handleOnFileExport} onFileDelete={handleOnFileDelete} onFileCreate={handleOnFileCreate} />
             <ChatWindow loadDir={pullFileSystem} project="test" folders={folders} clearEditedFiles={clearEditedFiles} onRequest={handleOnChatRequest}/>
