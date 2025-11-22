@@ -126,6 +126,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
 
   // Update a file at the path for the local store.
   function updateFile(filePath: string, content: string): DirEditRsp {
+    console.log("dir Updating file:", filePath);
     const nextDirState = {...dir};
     let file = readFileInDir(filePath, nextDirState);
     if ( !file ) throw new Error(`File ${filePath} not found for update`);
@@ -141,6 +142,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
 
   // Add a file at the path for the local store.
   function addFile(filePath: string, content: string): DirEditRsp {
+    console.log("dir Adding file:", filePath, content);
     const nextDirState = {...dir}
     let existingFile = readFileInDir(filePath, nextDirState);
 
@@ -189,29 +191,39 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
   }
 }
 
-// Hook to manage the currently active file being edited in any .
-function useManageActiveFile(dir: Dir, editedFiles: EditedFiles, updateFile: ((filePath: string, content: string) => DirEditRsp)) {
+
+export type ManageActiveFile = {
+  getFile: () => File | null;
+  getDir: () => ManagedFileSystem | null;
+  isEdited: () => boolean;
+  resetActiveFileState: () => void;
+  nextActiveFileState: () => void;
+  setFile: (path: string) => void;
+}
+
+// Hook to manage the currently active file being edited.
+function useManageActiveFile(dir: ManagedFileSystem[]) {
   const [activeFile, setActiveFile] = useState<ActiveFile>(null);
-  // const [actionState, actionDispatch] = useReducer(activeFileReducer, "none");
+
+  const activeDir = useRef<ManagedFileSystem | null>(null);
+  useEffect(() => { activeDir.current = dir.find(mfs => mfs.dir.title === activeFile?.path.split('/')[0]) || null; }, [dir, activeFile]);
+
   const activeFileState = useRef<'none' | 'set' | 'updated'>("none");
   const debounce = useRef<number>(Date.now());
-  // Always read the latest dir inside callbacks to avoid stale-closure reads
-  const latestDirRef = useRef<Dir>(dir);
-  useEffect(() => { latestDirRef.current = dir; }, [dir]);
 
-  // Keep active file in sync with directory when dir is updated externally.
+    // Keep active file in sync with directory when dir is updated externally.
   useEffect(() => {
     // If no active file, nothing to sync; ensure editor update state is reset
-    if (!activeFile) {
-      updateActiveFileState('reset');
+    if (!activeFile || !activeDir?.current?.dir ) {
+      resetActiveFileState();
       return;
     }
 
-    const freshActiveFile = readFileInDir(activeFile.path, dir);
+    const freshActiveFile = readFileInDir(activeFile.path, activeDir?.current?.dir);
     if (!freshActiveFile) {
       // File no longer exists in the updated dir
       setActiveFile(null);
-      updateActiveFileState('reset');
+      resetActiveFileState();
       return;
     }
 
@@ -221,51 +233,74 @@ function useManageActiveFile(dir: Dir, editedFiles: EditedFiles, updateFile: ((f
     }
   }, [dir])
 
-  const updateActiveFileState = useCallback((action: 'reset' | 'next') => {
-    if (Date.now() - debounce.current < 100) {
-      return;
-    };
-    debounce.current = Date.now();
-    if (action === 'reset') {
-      activeFileState.current = 'none';
-    } else if (action === 'next') {
-      if (activeFileState.current === 'none') {
-        activeFileState.current = 'set';
-      } else if (activeFileState.current === 'set') {
-        activeFileState.current = 'updated';
-      }
-    }
-  }, []);
-
-  function update(content: string | (() => string)): DirEditRsp {
-    let dirEditRsp = {nextDirState: dir, nextEditedFilesState: editedFiles, success: true};
-    let nextActiveFileState = activeFile;
-    if ( activeFileState.current === 'updated' && activeFile ) {
-      const nextContent = typeof content === 'string' ? content : content();
-      nextActiveFileState = {path: activeFile.path, content: nextContent};
-      setActiveFile(nextActiveFileState);
-      dirEditRsp = updateFile(nextActiveFileState.path, nextActiveFileState.content);
-    }
-    updateActiveFileState('reset');
-    return dirEditRsp;
+  function isEdited(): boolean {
+    if ( !activeFile || !activeDir ) return false;
+    if ( activeFileState.current !== 'updated' ) return false;
+    return true;
   }
 
-  function switch_(path: string) {
-    // Use the most recent dir value to avoid reading stale content when invoked
-    const file = readFileInDir(path, latestDirRef.current)
+  function resetActiveFileState() {
+    activeFileState.current = 'none';
+  }
+
+  function nextActiveFileState() {
+    if ( Date.now() - debounce.current < 100) return;
+    debounce.current = Date.now();
+
+    if (activeFileState.current === 'none') {
+      activeFileState.current = 'set';
+    } else if (activeFileState.current === 'set') {
+      activeFileState.current = 'updated';
+    }
+  }
+
+  function setFile(path: string) {
+    const dirName = path.split('/')[0];
+    
+    // O(n) fine since files should be limited in number
+    const pathMfs = dir.find(mfs => {
+      return mfs.dir.title === dirName
+    });
+
+    if ( !pathMfs ) return;
+
+    const file = readFileInDir(path, pathMfs.dir)
     setActiveFile(file);
+    activeDir.current = pathMfs;
+  }
+
+  function getFile(): File | null {
+    return activeFile;
+  }
+
+  function getDir(): ManagedFileSystem | null {
+    return activeDir.current;
   }
 
   return {
-    activeFile, 
-    update, 
-    switch_,
-    updateActiveFileState,
+    getFile,
+    getDir,
+    isEdited,
+    resetActiveFileState,
+    nextActiveFileState,
+    setFile,
   }
 }
 
+export type VirtualManagedFileSystem = {
+  virtualDir: Dir;
+  getEditedFiles: () => EditedFiles;
+  getFile: (path: string) => DirEditRsp;
+  updateFile: (path: string, content: string) => DirEditRsp;
+  deleteFile: (path: string) => DirEditRsp;
+  addFile: (path: string, content: string) => DirEditRsp;
+  pullFileSystem: () => Promise<DirEditRsp>;
+  pushFileSystem: () => Promise<void>;
+  clearEditedFiles: () => void;
+}
+
 // Put all directories into a virtual directory.
-function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]) {
+function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]): VirtualManagedFileSystem {
   const managedFileSystems = dirs;
 
   const virtualDir = {title: projectName, children: dirs.map(mfs => mfs.dir)};
@@ -329,27 +364,21 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]) {
     return {nextDirState: virtualDir, nextEditedFilesState: getEditedFiles(), success: false};
   }
 
-  function getFile(filePath: string) {
+  function getFile(filePath: string): DirEditRsp {
     return _useManageFilesWrapper('get', filePath);
   }
 
-  function updateFile(filePath: string, content: string) {
+  function updateFile(filePath: string, content: string): DirEditRsp {
     return _useManageFilesWrapper('update', filePath, content);
   }
 
-  function deleteFile(filePath: string) {
+  function deleteFile(filePath: string): DirEditRsp {
     return _useManageFilesWrapper('delete', filePath);
   }
 
-  function addFile(filePath: string, content: string) {
+  function addFile(filePath: string, content: string): DirEditRsp {
     return _useManageFilesWrapper('add', filePath, content);
   }
-
-  // function pullFileSystem() {
-  //   managedFileSystems.forEach(mfs => {
-  //     mfs.pullFileSystem();
-  //   });
-  // }
 
   async function pullFileSystem(): Promise<DirEditRsp> {
     await Promise.all(managedFileSystems.map(mfs => mfs.pullFileSystem()));
@@ -361,7 +390,6 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]) {
   }
 
   function clearEditedFiles() {
-    // Delegate to each managed FS to properly clear and trigger rerenders
     managedFileSystems.forEach(mfs => {
       mfs.clearEditedFiles();
     });
@@ -380,96 +408,4 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]) {
   };
 }
 
-
-
-// Hook to manage the currently active file being edited in any .
-function useManageActiveFileTest(dir: ManagedFileSystem[]) {
-  const [activeFile, setActiveFile] = useState<ActiveFile>(null);
-  // const [actionState, actionDispatch] = useReducer(activeFileReducer, "none");
-  const activeFileState = useRef<'none' | 'set' | 'updated'>("none");
-  // const debounce = useRef<number>(Date.now());
-  // Always read the latest dir inside callbacks to avoid stale-closure reads
-  // const latestDirRef = useRef<Dir>(dir);
-  // useEffect(() => { latestDirRef.current = dir; }, [dir]);
-
-  // // Keep active file in sync with directory when dir is updated externally.
-  // useEffect(() => {
-  //   // If no active file, nothing to sync; ensure editor update state is reset
-  //   if (!activeFile) {
-  //     updateActiveFileState('reset');
-  //     return;
-  //   }
-
-  //   const freshActiveFile = readFileInDir(activeFile.path, dir);
-  //   if (!freshActiveFile) {
-  //     // File no longer exists in the updated dir
-  //     setActiveFile(null);
-  //     updateActiveFileState('reset');
-  //     return;
-  //   }
-
-  //   // If content changed in the dir (e.g., after a pull), update the active file to reflect it
-  //   if (freshActiveFile.content !== activeFile.content) {
-  //     setActiveFile(freshActiveFile);
-  //   }
-  // }, [dir])
-
-  // const updateActiveFileState = useCallback((action: 'reset' | 'next') => {
-  //   if (Date.now() - debounce.current < 100) {
-  //     return;
-  //   };
-  //   debounce.current = Date.now();
-  //   if (action === 'reset') {
-  //     activeFileState.current = 'none';
-  //   } else if (action === 'next') {
-  //     if (activeFileState.current === 'none') {
-  //       activeFileState.current = 'set';
-  //     } else if (activeFileState.current === 'set') {
-  //       activeFileState.current = 'updated';
-  //     }
-  //   }
-  // }, []);
-
-  // function update(content: string | (() => string)): DirEditRsp {
-  //   let dirEditRsp = {nextDirState: dir, nextEditedFilesState: editedFiles, success: true};
-  //   let nextActiveFileState = activeFile;
-  //   if ( activeFileState.current === 'updated' && activeFile ) {
-  //     const nextContent = typeof content === 'string' ? content : content();
-  //     nextActiveFileState = {path: activeFile.path, content: nextContent};
-  //     setActiveFile(nextActiveFileState);
-  //     dirEditRsp = updateFile(nextActiveFileState.path, nextActiveFileState.content);
-  //   }
-  //   updateActiveFileState('reset');
-  //   return dirEditRsp;
-  // }
-
-  function switch_(path: string) {
-    // Use the most recent dir value to avoid reading stale content when invoked
-    console.log("Switching active file to:", path);
-
-    const dirName = path.split('/')[0];
-
-    console.log(dirName);
-
-    const pathMfs = dir.find(mfs => {
-      console.log(mfs.dir.title, mfs.dir.title === dirName);
-      return mfs.dir.title === dirName
-    });
-
-    console.log(pathMfs);
-
-    if ( !pathMfs ) return;
-
-    const file = readFileInDir(path, pathMfs.dir)
-    setActiveFile(file);
-  }
-
-  return {
-    activeFile, 
-    // update, 
-    switch_,
-    // updateActiveFileState,
-  }
-}
-
-export { useManageFiles, useManageActiveFile, useVirtualDirectory, useManageActiveFileTest };
+export { useManageFiles, useManageActiveFile, useVirtualDirectory };

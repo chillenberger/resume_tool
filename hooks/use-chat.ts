@@ -11,7 +11,7 @@ export default function useChat(projectDirectory: string, folders: string[] | nu
   
   useEffect(() => {
     if( folders ) initializeAgent(projectDirectory, folders);
-  }, [projectDirectory]) // Re-initialize agent when project directory changes
+  }, [projectDirectory, folders]) // Re-initialize agent when project directory changes
 
   const chatRequest = useCallback(async (userQuery: string, projectName: string, fileActions: {[key: string]: FileAction}) => {
     setIsLoading(true);

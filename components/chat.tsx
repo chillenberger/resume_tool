@@ -11,14 +11,18 @@ import {
   faCircleExclamation
 } from '@fortawesome/free-solid-svg-icons';
 
-import { DirEditRsp } from '@/hooks/use-file-manager';
+import { FileAction } from '@/types';
+
+interface OnRequestRsp {
+  nextEditedFilesState: { [key: string]: FileAction };
+}
 
 interface ChatWindowProps {
   loadDir: () => void;
   project: string;
   folders: string[] | null;
   clearEditedFiles: () => void;
-  onRequest?: () => Promise<DirEditRsp>;
+  onRequest: () => Promise<OnRequestRsp>;
 }
 
 export default function ChatWindow({
@@ -53,13 +57,13 @@ export default function ChatWindow({
     event.currentTarget.reset();
     const userRequest = formData.get('userQuery') as string;
 
-  const editedFiles = onRequest ? (await onRequest()).nextEditedFilesState : {};
+    const editedFiles = onRequest ? (await onRequest()).nextEditedFilesState : {};
 
     chatRequest(userRequest, project, editedFiles);
   }
 
   return (
-      <>
+      <div className="w-full h-full">
         <form onSubmit={handleNewRequest} className=" bg-white rounded-lg p-2 relative">
           <textarea name="userQuery" className="chat-input" placeholder="Discuss with ChatGPT"></textarea>
           {responseId && <input type="hidden" name="previousResponseId" value={responseId}/>}
@@ -85,6 +89,6 @@ export default function ChatWindow({
             </div>
           </div>
         }
-      </>
+      </div>
   )
 }

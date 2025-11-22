@@ -1,11 +1,10 @@
 'use client'
-import { useEffect, useCallback, use, useRef } from 'react';
+import { useEffect, useCallback, useState, Dispatch, SetStateAction } from 'react';
 import ChatWindow from '@/components/chat';
-import {useManageFiles, useManageActiveFile, useVirtualDirectory} from '@/hooks/use-file-manager';
+import {useManageFiles, useManageActiveFile, ManageActiveFile, useVirtualDirectory, ManagedFileSystem} from '@/hooks/use-file-manager';
 import PineconeDelicate from '@/components/pinecone-art';
 import FileTree from '@/components/file-tree';
 import { getContentTypeFromPath } from '@/lib/file';
-import Link from 'next/link';
 import path from 'path';
 import { 
   exportHtmlToPdf
@@ -16,103 +15,158 @@ import { useSearchParams } from 'next/navigation';
 
 import dynamic from 'next/dynamic';
 import useCKHtmlEditor from '@/components/ck-editor/ck-editor';
-
 const DisplayCKEditor = dynamic( () => import( '@/components/ck-editor/ck-editor-display' ), { ssr: false } );
 
+import { FileAction } from '@/types';
+
+ 
 export default function ChatPage() {
   const queryParams = useSearchParams();
-  const folders: string[] = JSON.parse(queryParams.get('filePath') || '[]');
-  const projectDirs = folders.map( f => useManageFiles(f));
-  const projectTitle = 'Virtual Directory';
-  const {virtualDir: dir, getEditedFiles, addFile, getFile, updateFile, deleteFile, pullFileSystem, pushFileSystem, clearEditedFiles} = useVirtualDirectory(projectTitle, projectDirs);
-  const {activeFile, update: updateActiveFile, switch_: switchActiveFile, updateActiveFileState} = useManageActiveFile(dir, getEditedFiles(), updateFile);
+  const [dirsPaths, setDirsPaths] = useState<string[]>(JSON.parse(queryParams.get('filePath') || '[]'));
+  const [projectDirs, setProjectDirs] = useState<ManagedFileSystem[]>([]);
 
-  const markdownEditor = useTipTapMarkdownEditor(() => updateActiveFileState('next'));
-  const htmlEditor = useCKHtmlEditor(() => updateActiveFileState('next' ));
+  const activeFileManager: ManageActiveFile = useManageActiveFile(projectDirs);
+  const virtualDir = useVirtualDirectory('Test Project', projectDirs);
+
+  const markdownEditor = useTipTapMarkdownEditor(() => activeFileManager.nextActiveFileState());
+  const htmlEditor = useCKHtmlEditor(() => activeFileManager.nextActiveFileState());
 
   const extractFileContent = useCallback(() => {
+    const activeFile = activeFileManager.getFile();
     if (!activeFile) return '';
-    const contentType = getContentTypeFromPath(activeFile.path);
+    const contentType = getContentTypeFromPath(activeFile?.path);
     if (contentType === 'markdown') {
       return markdownEditor?.getMarkdown() || '';
     } else {
       return htmlEditor?.editorRef.current?.getData() || '';
     }
-  }, [activeFile, markdownEditor, htmlEditor]);
+  }, [activeFileManager, markdownEditor, htmlEditor]);
 
   // Whenever active file changes, load its content into the appropriate editor.
   useEffect(() => {
-    const contentType = getContentTypeFromPath(activeFile?.path || '');
-    updateActiveFileState('reset');
+    const contentType = getContentTypeFromPath(activeFileManager.getFile()?.path || '');
+    activeFileManager.resetActiveFileState();
+
     if (contentType === 'markdown' && markdownEditor) {
-      const markdownContent = activeFile ? activeFile.content : '';
+      const markdownContent = activeFileManager?.getFile()?.content || '';
       markdownEditor?.commands.setContent(markdownContent, {contentType: 'markdown'});
     } else if (contentType === 'html' && htmlEditor?.editorRef.current) {
-      const htmlContent = activeFile ? activeFile.content : '';
+      const htmlContent = activeFileManager?.getFile()?.content || '';
       htmlEditor?.editorRef.current.setData(htmlContent);
     }
-  }, [activeFile, markdownEditor, htmlEditor]);
+  }, [activeFileManager, markdownEditor, htmlEditor]);
 
   const handleSwitchActiveFile = useCallback((filePath: string) => {
-    updateActiveFile(extractFileContent())
-    switchActiveFile(filePath);
-  }, [extractFileContent, switchActiveFile]);
+    if ( activeFileManager.isEdited() ) {
+      virtualDir.updateFile(activeFileManager.getFile()?.path || '', extractFileContent());
+      activeFileManager.resetActiveFileState();
+    }
+    activeFileManager.setFile(filePath);
+  }, [extractFileContent, activeFileManager]);
 
   const handleOnFileDelete = useCallback((filePath: string) => {
-    updateActiveFile(extractFileContent());
-    deleteFile(filePath);
-  }, [extractFileContent, deleteFile]);
+    if ( activeFileManager.isEdited() ) {
+      virtualDir.updateFile(activeFileManager.getFile()?.path || '', extractFileContent());
+      activeFileManager.resetActiveFileState();
+    }
+    virtualDir.deleteFile(filePath);
+  }, [extractFileContent, activeFileManager]);
 
   const handleOnFileCreate = useCallback((filePath: string) => {
-    updateActiveFile(extractFileContent());
-    addFile(filePath, 'New file content');
-  }, [extractFileContent, addFile]);
+    virtualDir.addFile(filePath, 'New file content');
+  }, [extractFileContent, virtualDir.addFile]);
+
+  const handleOnChatRequest = useCallback(async () => {
+    // Update the active file immediately, then flush changes to the server to avoid stale reads
+    let editedFiles: { [key: string]: FileAction } | null = null;
+    if ( activeFileManager.isEdited() ) {
+      const DirEdit = virtualDir.updateFile(activeFileManager.getFile()?.path || '', extractFileContent());
+      editedFiles = DirEdit.nextEditedFilesState;
+      activeFileManager.resetActiveFileState();
+    }
+    await virtualDir.pushFileSystem();
+    return editedFiles ? {nextEditedFilesState: editedFiles} : {nextEditedFilesState: virtualDir.getEditedFiles()};
+  }, [extractFileContent, virtualDir.updateFile, virtualDir.pushFileSystem]);
 
   const handleOnFileExport = useCallback((filePath: string) => {
-    updateActiveFile(extractFileContent());
-    const file = getFile(filePath).file;
+    if ( activeFileManager.isEdited() ) {
+      virtualDir.updateFile(activeFileManager.getFile()?.path || '', extractFileContent());
+      activeFileManager.resetActiveFileState();
+    }
+    
+    const file = virtualDir.getFile(filePath).file;
     if ( !file ) return; 
+
     const formData = new FormData();
     formData.append('doc', file.content);
     formData.append('docName',path.basename(file.path));
 
     // if ( folders ) exportHtmlToPdf(formData, folders);
     console.log("TODO: Implement exportHtmlToPdf");
-  }, [extractFileContent, getFile]);
-
-  const handleOnChatRequest = useCallback(async () => {
-    // Update the active file immediately, then flush changes to the server to avoid stale reads
-    const rsp = updateActiveFile(extractFileContent());
-    await pushFileSystem();
-    return rsp;
-  }, [extractFileContent, updateActiveFile, pushFileSystem]);
+  }, [extractFileContent, virtualDir.getFile]);
 
   return (
-    <div className="flex flex-row m-5 text-stone-300">
-      <div className="flex flex-col">
-        <h1 className="mb-2"><Link href="/">New Project</Link></h1>
-        <div className="p-2 bg-transparent rounded-md border border-neutral-50/10 me-8 h-[90vh]">
-          <div className="flex flex-col gap-3 p-3 w-lg h-full">
-            <FileTree dir={dir} onFileChange={handleSwitchActiveFile} onFileExport={handleOnFileExport} onFileDelete={handleOnFileDelete} onFileCreate={handleOnFileCreate} />
-            <ChatWindow loadDir={pullFileSystem} project="test" folders={folders} clearEditedFiles={clearEditedFiles} onRequest={handleOnChatRequest}/>
+    <div className="flex flex-col m-5 text-stone-300">
+      {/* <button onClick={() => {
+        const newDirPath = `/Users/danielillenberger/Documents/job_hunting_resources/projects/test-3`;
+        setDirsPaths([...dirsPaths, newDirPath]);
+      }}>Add Test Dir</button> */}
+
+      <div className="flex flex-row mt-5">
+        <WindowFrame>
+          <div className="flex flex-col me-10">
+            {dirsPaths.map(dp => (
+              <div key={dp} className="me-5">
+                <button onClick={() => {
+                  setDirsPaths(dirsPaths.filter(p => p !== dp));
+                }}>Remove {path.basename(dp)}</button>
+                <AddDirectory path={dp} setDirs={setProjectDirs} onSwitchActiveFile={handleSwitchActiveFile} onDeleteFile={handleOnFileDelete} onCreateFile={handleOnFileCreate}/>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
-      <div className="w-full">
-        <div className="w-full  h-full z-0 flex flex-col">
-          <h1 className="mb-2">{activeFile ? activeFile.path : 'Select File / Loading...'}</h1>
-          { 
-            activeFile ? 
-            <div className="flex h-[90vh] overflow-hidden">
-              { getContentTypeFromPath(activeFile.path) === 'markdown' ? 
-                <DisplayEditor editor={markdownEditor} editorType={'markdown'} /> :  
-                <DisplayCKEditor editorHandle={htmlEditor} defaultContent={activeFile?.content || ""}/> 
-              }
-            </div> :
-            <PineconeDelicate />
-          }
-        </div>
+        </WindowFrame>
+        <WindowFrame className="min-w-[50rem] flex flex-col">
+          <div>File: {activeFileManager.getFile() ? activeFileManager.getFile()?.path : 'Select File / Loading...'}</div>
+          <div>Directory: {activeFileManager.getDir()?.dir.title || "No Directory Set"}</div>
+          <div className="w-full  h-full z-0 flex flex-col">
+            { 
+              activeFileManager.getFile() ? 
+              <div className="flex h-[90vh] overflow-hidden">
+                { getContentTypeFromPath(activeFileManager.getFile()?.path || "") === 'markdown' ? 
+                  <DisplayEditor editor={markdownEditor} editorType={'markdown'} /> :  
+                  <DisplayCKEditor editorHandle={htmlEditor} defaultContent={activeFileManager.getFile()?.content || ""}/> 
+                }
+              </div> :
+              <PineconeDelicate />
+            }
+          </div>
+        </WindowFrame>
+        <WindowFrame>
+          <ChatWindow loadDir={virtualDir.pullFileSystem} project="test" folders={dirsPaths} clearEditedFiles={virtualDir.clearEditedFiles} onRequest={handleOnChatRequest}/>
+        </WindowFrame>
       </div>
     </div>
   );
+}
+
+function AddDirectory({path, setDirs, onSwitchActiveFile, onDeleteFile, onCreateFile}: {path: string, setDirs: Dispatch<SetStateAction<ManagedFileSystem[]>>, onSwitchActiveFile: (path: string) => void, onDeleteFile: (path: string) => void, onCreateFile: (path: string) => void} ) {
+  const dir = useManageFiles(path);
+
+  useEffect(() => {
+    setDirs(prev => {
+      const index = prev.findIndex(d => d.dir.title === dir.dir.title);
+      if ( index !== -1 ) {
+        prev.splice(index, 1);
+      }
+      return [...prev, dir];
+    });
+  }, [dir.dir])
+
+  return <FileTree dir={dir.dir} onFileChange={(path) => onSwitchActiveFile(path)} onFileCreate={(path) => onCreateFile(path)} onFileDelete={(path) => onDeleteFile(path)}/>; 
+}
+
+function WindowFrame(props: {children: React.ReactNode, className?: string}) {
+  return (
+    <div className={`w-full h-full border-2 border-stone-600 rounded-lg p-2 ${props.className || ''}`}>{props.children}</div>
+  )
 }
