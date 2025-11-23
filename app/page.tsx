@@ -45,7 +45,6 @@ function UriForm ({rootPath}: {rootPath?: string}) {
 
   const handleNewPath = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Handling new path submission");
     const uris = [];
     for ( let i = 1; i <= inputCount; i++ ) {
       const filePath = formRef.current?.elements.namedItem('filePath-' + i) as HTMLInputElement;

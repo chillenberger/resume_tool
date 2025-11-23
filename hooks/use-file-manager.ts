@@ -14,13 +14,17 @@ import { flattenDir } from '@/lib/file';
 type ActiveFile = File | null;
 type EditedFiles = { [path: string]: FileAction };
 
+export type DirEditRsp = {
+  nextDirState: Dir;
+  nextEditedFilesState: { [key: string]: FileAction };
+  success: boolean
+  file?: File;
+}
+
 function editedFilesReducer(state: { [key: string]: FileAction } = {}, action?: { type: FileAction | 'clear', path: string }) {
   if (!action) {
     return state;
   }
-  // if (!action.path && action.type !== 'clear') {
-  //   throw new Error("path must be provided for update action");
-  // }
 
   const nextState = {...state};
   switch(action.type) {
@@ -58,19 +62,11 @@ export type ManagedFileSystem = {
   clearEditedFiles: () => void;
 }
 
-export type DirEditRsp = {
-  nextDirState: Dir;
-  nextEditedFilesState: { [key: string]: FileAction };
-  success: boolean
-  file?: File;
-}
-
 // Hook to manage a directory and maintain sync with server.
 function useManageFiles(folder: string | null): ManagedFileSystem {
   const [dir, setDir] = useState<Dir>({ title: path.basename(folder || ""), children: [] });
   const dirIsInitialized = useRef(false);
   const [pushLockout, setPushLockout] = useState<number>(0);
-  // const [editedFiles, editedFilesDispatch] = useReducer(editedFilesReducer, {})
   const editedFilesRef = useRef<EditedFiles>({});
 
   // On load pull current file system from cloud.

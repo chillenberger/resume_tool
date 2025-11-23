@@ -3,6 +3,7 @@ import { useEffect, useCallback, useState, Dispatch, SetStateAction } from 'reac
 import ChatWindow from '@/components/chat';
 import {useManageFiles, useManageActiveFile, ManageActiveFile, useVirtualDirectory, ManagedFileSystem} from '@/hooks/use-file-manager';
 import PineconeDelicate from '@/components/pinecone-art';
+import UriForm from '@/components/forms/uri-form';
 import FileTree from '@/components/file-tree';
 import { getContentTypeFromPath } from '@/lib/file';
 import path from 'path';
@@ -105,22 +106,25 @@ export default function ChatPage() {
     console.log("TODO: Implement exportHtmlToPdf");
   }, [extractFileContent, virtualDir.getFile]);
 
+  const handleRemoveDir = (path: string) => {
+    setDirsPaths(dirsPaths.filter(p => p !== path));
+  };
+
+  const handleAddDir = (path: string) => {
+    if ( !dirsPaths.includes(path) ) {
+      setDirsPaths([...dirsPaths, path]);
+    }
+  }
+
   return (
     <div className="flex flex-col m-5 text-stone-300">
-      {/* <button onClick={() => {
-        const newDirPath = `/Users/danielillenberger/Documents/job_hunting_resources/projects/test-3`;
-        setDirsPaths([...dirsPaths, newDirPath]);
-      }}>Add Test Dir</button> */}
-
       <div className="flex flex-row mt-5">
         <WindowFrame>
+          <UriForm handleAddDir={handleAddDir} />
           <div className="flex flex-col me-10">
             {dirsPaths.map(dp => (
               <div key={dp} className="me-5">
-                <button onClick={() => {
-                  setDirsPaths(dirsPaths.filter(p => p !== dp));
-                }}>Remove {path.basename(dp)}</button>
-                <AddDirectory path={dp} setDirs={setProjectDirs} onSwitchActiveFile={handleSwitchActiveFile} onDeleteFile={handleOnFileDelete} onCreateFile={handleOnFileCreate}/>
+                <AddDirectory path={dp} setDirs={setProjectDirs} onSwitchActiveFile={handleSwitchActiveFile} onDeleteFile={handleOnFileDelete} onCreateFile={handleOnFileCreate} handleRemoveDir={() => handleRemoveDir(dp)}/>
               </div>
             ))}
           </div>
@@ -149,7 +153,7 @@ export default function ChatPage() {
   );
 }
 
-function AddDirectory({path, setDirs, onSwitchActiveFile, onDeleteFile, onCreateFile}: {path: string, setDirs: Dispatch<SetStateAction<ManagedFileSystem[]>>, onSwitchActiveFile: (path: string) => void, onDeleteFile: (path: string) => void, onCreateFile: (path: string) => void} ) {
+function AddDirectory({path, setDirs, onSwitchActiveFile, onDeleteFile, onCreateFile, handleRemoveDir}: {path: string, setDirs: Dispatch<SetStateAction<ManagedFileSystem[]>>, onSwitchActiveFile: (path: string) => void, onDeleteFile: (path: string) => void, onCreateFile: (path: string) => void, handleRemoveDir: (path: string) => void} ) {
   const dir = useManageFiles(path);
 
   useEffect(() => {
@@ -162,7 +166,7 @@ function AddDirectory({path, setDirs, onSwitchActiveFile, onDeleteFile, onCreate
     });
   }, [dir.dir])
 
-  return <FileTree dir={dir.dir} onFileChange={(path) => onSwitchActiveFile(path)} onFileCreate={(path) => onCreateFile(path)} onFileDelete={(path) => onDeleteFile(path)}/>; 
+  return <FileTree dir={dir.dir} onFileChange={(path) => onSwitchActiveFile(path)} onFileCreate={(path) => onCreateFile(path)} onFileDelete={(path) => onDeleteFile(path)} onRemoveDir={() => handleRemoveDir(path)} />; 
 }
 
 function WindowFrame(props: {children: React.ReactNode, className?: string}) {
