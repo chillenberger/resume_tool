@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useCallback, useState, Dispatch, SetStateAction, useContext } from 'react';
+import { useEffect, useCallback, useState, Dispatch, SetStateAction } from 'react';
 import ChatWindow from '@/components/chat';
 import {useManageFiles, useManageActiveFile, ManageActiveFile, useVirtualDirectory, ManagedFileSystem} from '@/hooks/use-file-manager';
 import useLogger from '@/hooks/use-logger';
@@ -8,7 +8,6 @@ import UriForm from '@/components/forms/uri-form';
 import FileTree from '@/components/file-tree';
 import { getContentTypeFromPath } from '@/lib/file';
 import path from 'path';
-import { ChatSessionContext } from '@/components/session';
 import { 
   exportHtmlToPdf
 } from '@/services/file-service';
@@ -19,9 +18,6 @@ import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import useCKHtmlEditor from '@/components/ck-editor/ck-editor';
 const DisplayCKEditor = dynamic( () => import( '@/components/ck-editor/ck-editor-display' ), { ssr: false } );
-
-import { FileAction } from '@/types';
-
  
 export default function ChatPage() {
   const queryParams = useSearchParams();
@@ -80,15 +76,11 @@ export default function ChatPage() {
   }, [extractFileContent, virtualDir.addFile]);
 
   const handleOnChatRequest = useCallback(async () => {
-    // Update the active file immediately, then flush changes to the server to avoid stale reads
-    let editedFiles: { [key: string]: FileAction } | null = null;
     if ( activeFileManager.isEdited() ) {
-      const DirEdit = virtualDir.updateFile(activeFileManager.getFile()?.path || '', extractFileContent());
-      editedFiles = DirEdit.nextEditedFilesState;
+      virtualDir.updateFile(activeFileManager.getFile()?.path || '', extractFileContent());
       activeFileManager.resetActiveFileState();
     }
     await virtualDir.pushFileSystem();
-    return editedFiles ? {nextEditedFilesState: editedFiles} : {nextEditedFilesState: virtualDir.getEditedFiles()};
   }, [extractFileContent, virtualDir.updateFile, virtualDir.pushFileSystem]);
 
   const handleOnFileExport = useCallback((filePath: string) => {
@@ -148,7 +140,7 @@ export default function ChatPage() {
           </div>
         </WindowFrame>
         <WindowFrame>
-          <ChatWindow loadDir={virtualDir.pullFileSystem} project="test" folders={dirsPaths} clearEditedFiles={virtualDir.clearEditedFiles} onRequest={handleOnChatRequest}/>
+          <ChatWindow loadDir={virtualDir.pullFileSystem} project="test" folders={dirsPaths} onRequest={handleOnChatRequest}/>
         </WindowFrame>
       </div>
     </div>

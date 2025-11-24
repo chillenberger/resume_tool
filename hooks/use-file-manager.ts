@@ -5,7 +5,7 @@ import {
   getFileSystem,
   setFileSystem,
 } from '@/services/file-service';
-import { Dir, File, FileAction } from '@/types';
+import { Dir, File } from '@/types';
 import { readFileInDir, createFileInDir, deleteFileFromDir, updateFileInDir, alphabetizeDir } from '@/lib/file';
 import path from 'path';
 import { flattenDir } from '@/lib/file';
@@ -13,46 +13,15 @@ import useLogger from '@/hooks/use-logger';
  
 
 type ActiveFile = File | null;
-type EditedFiles = { [path: string]: FileAction };
 
 export type DirEditRsp = {
   nextDirState: Dir;
-  nextEditedFilesState: { [key: string]: FileAction };
   success: boolean
   file?: File;
 }
 
-function editedFilesReducer(state: { [key: string]: FileAction } = {}, action?: { type: FileAction | 'clear', path: string }) {
-  if (!action) {
-    return state;
-  }
-
-  const nextState = {...state};
-  switch(action.type) {
-    case 'created':
-      nextState[action.path] = 'created';
-      return nextState
-    case 'deleted':
-      if ( state[action.path] === 'created' ) {
-        delete nextState[action.path];
-        return nextState;
-      }
-      nextState[action.path] = 'deleted';
-      return nextState;
-    case 'updated':
-      if ( nextState[action.path] === 'created' ) {
-        return nextState;
-      }
-      nextState[action.path] = 'updated';
-      return nextState;
-    case 'clear': 
-      return {};
-  }
-}
-
 export type ManagedFileSystem = {
   dir: Dir;
-  editedFiles: EditedFiles;
   setDir: React.Dispatch<React.SetStateAction<Dir>>;
   getFile: (path: string) => DirEditRsp;
   updateFile: (path: string, content: string) => DirEditRsp;
@@ -60,7 +29,6 @@ export type ManagedFileSystem = {
   addFile: (path: string, content: string) => DirEditRsp;
   pullFileSystem: () => Promise<DirEditRsp>;
   pushFileSystem: () => Promise<void>;
-  clearEditedFiles: () => void;
 }
 
 // Hook to manage a directory and maintain sync with server.
@@ -68,21 +36,13 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
   const [dir, setDir] = useState<Dir>({ title: path.basename(folder || ""), children: [] });
   const dirIsInitialized = useRef(false);
   const [pushLockout, setPushLockout] = useState<number>(0);
-  const editedFilesRef = useRef<EditedFiles>({});
   const logger = useLogger();
 
   // On load pull current file system from cloud.
   useEffect(() => {
     const initialPull = async() => {
       const rsp = await pullFileSystem();
-      const files = flattenDir(rsp.nextDirState);
-      files.forEach(file => {
-        if ( !(file.path in editedFilesRef.current)) {
-          editedFilesRef.current = editedFilesReducer(editedFilesRef.current, {type: 'updated', path: file.path});
-        }
-      })
     }
-
     initialPull();
   }, [])
 
@@ -108,18 +68,16 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
       const nextDirState: Dir = await getFileSystem(folder);
       
       setDir(nextDirState);
-      const nextEditedFilesState = {};
-      // editedFilesDispatch('clear');
-      editedFilesRef.current = nextEditedFilesState;
-      return {nextDirState, nextEditedFilesState, success: true};
+
+      return {nextDirState, success: true};
     }
-    return {nextDirState: dir, nextEditedFilesState: editedFilesRef.current, success: false};
+    return {nextDirState: dir, success: false};
   }
   
   // Get a file at the path from the local store.
   function getFile(path: string): DirEditRsp {
     const file = readFileInDir(path, dir);
-    return {nextDirState: dir, nextEditedFilesState: editedFilesRef.current, success: file ? true : false, file: file ? file : undefined}
+    return {nextDirState: dir, success: file ? true : false, file: file ? file : undefined}
   }
 
   // Update a file at the path for the local store.
@@ -133,10 +91,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
     setDir(nextDirState);
     logger.editedFileLog(filePath);
 
-    const nextEditedFilesState = editedFilesReducer(editedFilesRef.current, {type: 'updated', path: file.path});
-    // editedFilesDispatch({type: 'updated', path: file.path});
-    editedFilesRef.current = nextEditedFilesState;
-    return {nextDirState, nextEditedFilesState, success: true};
+    return {nextDirState,  success: true};
   }
 
   // Add a file at the path for the local store.
@@ -154,10 +109,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
     setDir(nextDirState);
     logger.createdFileLog(filePath);
 
-    const nextEditedFilesState = editedFilesReducer(editedFilesRef.current, {type: 'created', path: filePath});
-    // editedFilesDispatch({type: 'created', path: filePath});
-    editedFilesRef.current = nextEditedFilesState;
-    return {nextDirState, nextEditedFilesState,  success: true}
+    return {nextDirState, success: true}
   }
 
   // Delete a file at the path for the local store.
@@ -167,20 +119,11 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
     setDir(nextDirState);
     logger.deletedFileLog(filePath);
 
-    const nextEditedFilesState = editedFilesReducer(editedFilesRef.current, {type: 'deleted', path: filePath});
-    // editedFilesDispatch({type: 'deleted', path: filePath});
-    editedFilesRef.current = nextEditedFilesState;
-    return {nextDirState, nextEditedFilesState,  success}
-  }
-
-  function clearEditedFiles() {
-    // Reset the edited files map and force a re-render so consumers see the change
-    editedFilesRef.current = {};
+    return {nextDirState,  success}
   }
 
   return {
     dir,
-    editedFiles: editedFilesRef.current,
     setDir,
     getFile,
     updateFile,
@@ -188,7 +131,6 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
     addFile,
     pullFileSystem,
     pushFileSystem,
-    clearEditedFiles,
   }
 }
 
@@ -211,6 +153,7 @@ function useManageActiveFile(dir: ManagedFileSystem[]) {
 
   const activeFileState = useRef<'none' | 'set' | 'updated'>("none");
   const debounce = useRef<number>(Date.now());
+  const logger = useLogger();
 
     // Keep active file in sync with directory when dir is updated externally.
   useEffect(() => {
@@ -267,6 +210,7 @@ function useManageActiveFile(dir: ManagedFileSystem[]) {
 
     const file = readFileInDir(path, pathMfs.dir)
     setActiveFile(file);
+    logger.switchedActiveFileLog(path);
     activeDir.current = pathMfs;
   }
 
@@ -290,14 +234,12 @@ function useManageActiveFile(dir: ManagedFileSystem[]) {
 
 export type VirtualManagedFileSystem = {
   virtualDir: Dir;
-  getEditedFiles: () => EditedFiles;
   getFile: (path: string) => DirEditRsp;
   updateFile: (path: string, content: string) => DirEditRsp;
   deleteFile: (path: string) => DirEditRsp;
   addFile: (path: string, content: string) => DirEditRsp;
   pullFileSystem: () => Promise<DirEditRsp>;
   pushFileSystem: () => Promise<void>;
-  clearEditedFiles: () => void;
 }
 
 // Put all directories into a virtual directory.
@@ -306,31 +248,15 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]): Vi
 
   const virtualDir = {title: projectName, children: dirs.map(mfs => mfs.dir)};
 
-  // Snapshot current edited files at call time; avoids relying on rerenders
-  function getEditedFiles(): EditedFiles {
-    const merged = managedFileSystems
-      .map(mfs => mfs.editedFiles)
-      .map(efs => ({ ...efs }))
-      .reduce((acc: EditedFiles, curr: EditedFiles) => {
-        Object.entries(curr).forEach(([p, action]) => {
-          acc[`${projectName}/${p}`] = action;
-        });
-        return acc;
-      }, {} as EditedFiles);
-    return merged;
-  }
-
   function _consolidateDirRsp(rsp: DirEditRsp): DirEditRsp {
     const nextVirtualDirState = { ...virtualDir };
     const dirIndex = managedFileSystems.findIndex(mfs => mfs.dir.title === rsp.nextDirState.title);
     if ( dirIndex === -1 ) {
-      return {nextDirState: virtualDir, nextEditedFilesState: {}, success: false};
+      return {nextDirState: virtualDir, success: false};
     }
 
     nextVirtualDirState.children[dirIndex] = rsp.nextDirState;
-    // Always provide a consolidated, current snapshot of edited files
-    const nextEditedFilesState = getEditedFiles();
-    return {nextDirState: nextVirtualDirState, nextEditedFilesState, success: rsp.success};
+    return {nextDirState: nextVirtualDirState, success: rsp.success};
   }
 
   function _useManageFilesWrapper(command: string, filePath: string, content?: string): DirEditRsp {
@@ -347,7 +273,7 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]): Vi
           return _consolidateDirRsp(rsp);
         }
         case 'update': {
-          if ( content === undefined ) return {nextDirState: virtualDir, nextEditedFilesState: {}, success: false};
+          if ( content === undefined ) return {nextDirState: virtualDir, success: false};
           const rsp = mfsResults.updateFile(filePath, content);
           return _consolidateDirRsp(rsp);
         }
@@ -356,13 +282,13 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]): Vi
           return _consolidateDirRsp(rsp);
         }
         case 'add':
-          if ( content === undefined ) return {nextDirState: virtualDir, nextEditedFilesState: {}, success: false};
+          if ( content === undefined ) return {nextDirState: virtualDir, success: false};
           const rsp = mfsResults.addFile(filePath, content);
           return _consolidateDirRsp(rsp);
       }
     }
 
-    return {nextDirState: virtualDir, nextEditedFilesState: getEditedFiles(), success: false};
+    return {nextDirState: virtualDir, success: false};
   }
 
   function getFile(filePath: string): DirEditRsp {
@@ -383,29 +309,22 @@ function useVirtualDirectory(projectName: string, dirs: ManagedFileSystem[]): Vi
 
   async function pullFileSystem(): Promise<DirEditRsp> {
     await Promise.all(managedFileSystems.map(mfs => mfs.pullFileSystem()));
-    return _consolidateDirRsp({nextDirState: virtualDir, nextEditedFilesState: getEditedFiles(), success: true});
+    return _consolidateDirRsp({nextDirState: virtualDir, success: true});
   }
 
   async function pushFileSystem(): Promise<void> {
     await Promise.all(managedFileSystems.map(mfs => mfs.pushFileSystem()));
   }
 
-  function clearEditedFiles() {
-    managedFileSystems.forEach(mfs => {
-      mfs.clearEditedFiles();
-    });
-  }
 
   return {
     virtualDir,
-    getEditedFiles,
     updateFile,
     getFile,
     deleteFile,
     addFile,
     pullFileSystem,
     pushFileSystem,
-    clearEditedFiles,
   };
 }
 

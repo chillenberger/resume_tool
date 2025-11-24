@@ -1,5 +1,5 @@
 import { chat, getChatLog, initializeAgent } from '@/services/chat-service';
-import { ChatResponse, Conversation, FileAction } from '@/types';
+import { ChatResponse, Conversation } from '@/types';
 import { useEffect, useState, useCallback, useContext } from 'react';
 import { ChatSessionContext } from '@/components/session';
 
@@ -16,7 +16,7 @@ export default function useChat(projectDirectory: string, folders: string[] | nu
     if( folders ) initializeAgent(projectDirectory, folders);
   }, [projectDirectory, folders]) // Re-initialize agent when project directory changes
 
-  const chatRequest = useCallback(async (userQuery: string, projectName: string, fileActions: {[key: string]: FileAction}) => {
+  const chatRequest = useCallback(async (userQuery: string, projectName: string) => {
     setIsLoading(true);
 
     const formData = new FormData();
@@ -25,10 +25,6 @@ export default function useChat(projectDirectory: string, folders: string[] | nu
     if( responseId ) {
       formData.append('previousResponseId', responseId);
     }
-    if( fileActions && Object.keys(fileActions).length > 0 ) {
-      formData.append('fileActionsTaken', JSON.stringify(fileActions)); 
-    }
-
 
     chat(formData, sessionValue, timeLastRequest)
     .then((resp: ChatResponse) => {

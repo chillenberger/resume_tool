@@ -1,6 +1,6 @@
 'use server'
 
-import { Conversation, FileAction, ChatResponse, ChatSchema, ChatLog, FileActionTrack} from '../types';
+import { Conversation, ChatResponse, ChatSchema, ChatLog, ChatActions} from '../types';
 import { MyAgent } from '../lib/openai';
 import { createChatLog, getChatLogsByProject, getActionLogsBySessionAndCreatedAt } from './db-service';
 
@@ -15,15 +15,8 @@ function initializeAgent(projectName: string, folders: string[]) {
 async function chat(formData: FormData, chatSession: string, timeLastRequest: string): Promise<ChatResponse> {
   const userQuery = formData.get('userQuery') as string;
   const previousResponseId = formData.get('previousResponseId') as string | null;
-  
-  // const fileActions = formData.get('fileActionsTaken') as string | null;
-  // const fileActionsJson: {[key: string]: FileAction} = fileActions ? JSON.parse(fileActions) as {[key: string]: FileAction} : {};
 
   if (!myAgentInstance) throw new Error("Agent not initialized");
-
-  // const query = JSON.stringify({"userQuery": userQuery, "fileActionsTaken": fileActionsJson});
-
-  // console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson, chatSession });
 
   const testActionDBCall = await getActionLogsBySessionAndCreatedAt(chatSession, new Date(timeLastRequest));
   console.log("Test action DB call result:", testActionDBCall);
@@ -32,39 +25,38 @@ async function chat(formData: FormData, chatSession: string, timeLastRequest: st
     details: actionLog.details,
   }));
 
-  // const userActionsJSON = JSON.stringify(userActions);
   const query = JSON.stringify({"userQuery": userQuery, "systemActions": userActions});
 
   console.log("Constructed agent query:", query);
 
-  // const response = await myAgentInstance.run(query, previousResponseId);
-  // if( !response?.finalOutput ) {
-  //   throw new Error("No response from agent");
-  // }
+  const response = await myAgentInstance.run(query, previousResponseId);
+  if( !response?.finalOutput ) {
+    throw new Error("No response from agent");
+  }
 
-  // console.log("Agent response:", response);
+  console.log("Agent response:", response);
 
-  // const chatLogEntry = {
-  //   user_id: "user-123",
-  //   project_id: myAgentInstance.projectName,
-  //   response_id: response.lastResponseId || '',
-  //   previous_response_id: previousResponseId,
-  //   request_text: JSON.stringify(query),
-  //   response_text: JSON.stringify(response.finalOutput),
-  //   created_at: new Date().toISOString(),
-  //   updated_at: new Date().toISOString(),
-  //   deleted_at: null,
-  // }
+  const chatLogEntry = {
+    user_id: "user-123",
+    project_id: myAgentInstance.projectName,
+    response_id: response.lastResponseId || '',
+    previous_response_id: previousResponseId,
+    request_text: JSON.stringify(query),
+    response_text: JSON.stringify(response.finalOutput),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
+  }
 
-  // await createChatLog(chatLogEntry);
-  // return {
-  //   response: response.finalOutput,
-  //   lastResponseId: response.lastResponseId || '',
-  //   error: false,
-  // }
+  await createChatLog(chatLogEntry);
+  return {
+    response: response.finalOutput,
+    lastResponseId: response.lastResponseId || '',
+    error: false,
+  }
 
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return testResponse;
+//   await new Promise(resolve => setTimeout(resolve, 1000));
+//   return testResponse;
 }
 
 async function getChatLog(projectName: string): Promise<Conversation[]> {
@@ -74,7 +66,7 @@ async function getChatLog(projectName: string): Promise<Conversation[]> {
     response: {
       response: {
         message: log.response_text || '',
-        file_actions: [] as FileActionTrack[],
+        system_actions: [] as ChatActions[],
         special_instructions: ''
       },
       lastResponseId: log.response_id,
@@ -88,7 +80,7 @@ export {chat, getChatLog, initializeAgent};
 const testResponse = {
   response: {
     message: "This is a test response",
-    file_actions: [] as FileActionTrack[],
+    system_actions: [] as ChatActions[],
     special_instructions: "These are some special instructions."
   },
   lastResponseId: "test-response-id",

@@ -1,4 +1,4 @@
-import { ChatSchema, TestChatSchema } from "../types";
+import { ChatSchema } from "../types";
 import { Agent, run, MCPServerStdio } from '@openai/agents';
 import path from "path";
 
@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `You are a professional career coach that lives inside my 
 `
 
 class MyAgent {
-  private agent: Agent<unknown, typeof TestChatSchema>;
+  private agent: Agent<unknown, typeof ChatSchema>;
   private mcpServer: MCPServerStdio;
   projectName: string;
 
@@ -34,12 +34,12 @@ class MyAgent {
     this.mcpServer.close();
   }
 
-  private CreateAgent(mcpServer: MCPServerStdio): Agent<unknown, typeof TestChatSchema> {
+  private CreateAgent(mcpServer: MCPServerStdio): Agent<unknown, typeof ChatSchema> {
     const result =  new Agent({
       name: 'FS MCP Assistant',
       model: 'gpt-5',
       instructions: SYSTEM_PROMPT,
-      outputType: TestChatSchema,
+      outputType: ChatSchema,
       mcpServers: [mcpServer]
     });
     return result;

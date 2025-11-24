@@ -1,6 +1,6 @@
 
 import useChat from '@/hooks/use-chat';
-import { useContext, useEffect} from 'react';
+import { useEffect } from 'react';
 import Loader from '@/components/loader';
 import useLogger from '@/hooks/use-logger';
 
@@ -13,24 +13,16 @@ import {
   faRefresh,
 } from '@fortawesome/free-solid-svg-icons';
 
-import { FileAction } from '@/types';
-
-interface OnRequestRsp {
-  nextEditedFilesState: { [key: string]: FileAction };
-}
-
 interface ChatWindowProps {
   loadDir: () => void;
   project: string;
   folders: string[] | null;
-  clearEditedFiles: () => void;
-  onRequest: () => Promise<OnRequestRsp>;
+  onRequest: () => Promise<void>;
 }
 
 export default function ChatWindow({
     loadDir,
     project,
-    clearEditedFiles,
     onRequest,
     folders
 }: ChatWindowProps) {
@@ -44,8 +36,7 @@ export default function ChatWindow({
 
   // On response clear local edited files tracker and reload all files if changes by chat. 
   useEffect(() => {
-    clearEditedFiles();
-    const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.file_actions;
+    const lastChatResponseFiles = conversation?.[conversation.length - 1]?.response?.response?.system_actions;
     if ( lastChatResponseFiles ) {
       console.log("Files were changed by chat response, reloading directory:", lastChatResponseFiles);
       loadDir()
@@ -59,9 +50,8 @@ export default function ChatWindow({
     event.currentTarget.reset();
     const userRequest = formData.get('userQuery') as string;
 
-    const editedFiles = onRequest ? (await onRequest()).nextEditedFilesState : {};
-
-    chatRequest(userRequest, project, editedFiles);
+    await onRequest()
+    chatRequest(userRequest, project);
   }
 
   function handleNewChat() {
