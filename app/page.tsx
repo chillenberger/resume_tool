@@ -1,5 +1,5 @@
 'use client'
-import React, {useRef, useEffect, useState, use} from 'react';
+import React, {useRef, useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
 import { getRootPath } from '@/services/file-service';
 import PineconeDelicate from '@/components/pinecone-art';

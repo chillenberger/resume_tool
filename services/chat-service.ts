@@ -2,7 +2,7 @@
 
 import { Conversation, FileAction, ChatResponse, ChatSchema, ChatLog, FileActionTrack} from '../types';
 import { MyAgent } from '../lib/openai';
-import { createChatLog, getChatLogsByProject } from './db-service';
+import { createChatLog, getChatLogsByProject, getActionLogsBySessionAndCreatedAt } from './db-service';
 
 let myAgentInstance: MyAgent | null = null;
 
@@ -12,48 +12,59 @@ function initializeAgent(projectName: string, folders: string[]) {
   myAgentInstance = myAgent;
 }
 
-async function chat(formData: FormData): Promise<ChatResponse> {
-  console.log('chatService here')
+async function chat(formData: FormData, chatSession: string, timeLastRequest: string): Promise<ChatResponse> {
   const userQuery = formData.get('userQuery') as string;
   const previousResponseId = formData.get('previousResponseId') as string | null;
   
-  const fileActions = formData.get('fileActionsTaken') as string | null;
-  const fileActionsJson: {[key: string]: FileAction} = fileActions ? JSON.parse(fileActions) as {[key: string]: FileAction} : {};
+  // const fileActions = formData.get('fileActionsTaken') as string | null;
+  // const fileActionsJson: {[key: string]: FileAction} = fileActions ? JSON.parse(fileActions) as {[key: string]: FileAction} : {};
 
   if (!myAgentInstance) throw new Error("Agent not initialized");
 
-  const query = JSON.stringify({"userQuery": userQuery, "fileActionsTaken": fileActionsJson});
+  // const query = JSON.stringify({"userQuery": userQuery, "fileActionsTaken": fileActionsJson});
 
-  console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson });
+  // console.log("Chat service called with:", { userQuery, previousResponseId, fileActionsJson, chatSession });
 
-  const response = await myAgentInstance.run(query, previousResponseId);
-  if( !response?.finalOutput ) {
-    throw new Error("No response from agent");
-  }
+  const testActionDBCall = await getActionLogsBySessionAndCreatedAt(chatSession, new Date(timeLastRequest));
+  console.log("Test action DB call result:", testActionDBCall);
+  const userActions = testActionDBCall.map(actionLog => ({
+    action_type: actionLog.action_type,
+    details: actionLog.details,
+  }));
 
-  console.log("Agent response:", response);
+  // const userActionsJSON = JSON.stringify(userActions);
+  const query = JSON.stringify({"userQuery": userQuery, "systemActions": userActions});
 
-  const chatLogEntry = {
-    user_id: "user-123",
-    project_id: myAgentInstance.projectName,
-    response_id: response.lastResponseId || '',
-    previous_response_id: previousResponseId,
-    request_text: JSON.stringify(query),
-    response_text: JSON.stringify(response.finalOutput),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    deleted_at: null,
-  }
+  console.log("Constructed agent query:", query);
 
-  await createChatLog(chatLogEntry);
-  return {
-    response: response.finalOutput,
-    lastResponseId: response.lastResponseId || '',
-    error: false,
-  }
+  // const response = await myAgentInstance.run(query, previousResponseId);
+  // if( !response?.finalOutput ) {
+  //   throw new Error("No response from agent");
+  // }
 
-  // await new Promise(resolve => setTimeout(resolve, 1000));
-  // return testResponse;
+  // console.log("Agent response:", response);
+
+  // const chatLogEntry = {
+  //   user_id: "user-123",
+  //   project_id: myAgentInstance.projectName,
+  //   response_id: response.lastResponseId || '',
+  //   previous_response_id: previousResponseId,
+  //   request_text: JSON.stringify(query),
+  //   response_text: JSON.stringify(response.finalOutput),
+  //   created_at: new Date().toISOString(),
+  //   updated_at: new Date().toISOString(),
+  //   deleted_at: null,
+  // }
+
+  // await createChatLog(chatLogEntry);
+  // return {
+  //   response: response.finalOutput,
+  //   lastResponseId: response.lastResponseId || '',
+  //   error: false,
+  // }
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return testResponse;
 }
 
 async function getChatLog(projectName: string): Promise<Conversation[]> {

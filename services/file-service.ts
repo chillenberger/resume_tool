@@ -24,7 +24,6 @@ async function createNewProject(projectName: string) {
   } catch (error) {
     // Directory does not exist, create it
     fs.mkdirSync(projectPath);
-    console.log(`Created new project: ${projectName}`);
   }
 
   try {
@@ -41,7 +40,6 @@ async function getRootPath() {
 }
 
 async function getFileSystem(folder: string): Promise<Dir> {
-  console.log(folder);
   return new Promise((resolve, reject) => {
     readdir(folder, (err, files) => {
       if (err) {
@@ -93,7 +91,6 @@ async function getFileSystem(folder: string): Promise<Dir> {
 }
 
 async function setFileSystem(dir: Dir, folder: string) {
-  console.log(folder, flattenDir(dir))
   const serverDir = await getFileSystem(folder);
 
   // Delete files that are on server but not in dir

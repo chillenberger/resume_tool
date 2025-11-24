@@ -1,6 +1,7 @@
 import { chat, getChatLog, initializeAgent } from '@/services/chat-service';
 import { ChatResponse, Conversation, FileAction } from '@/types';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useContext } from 'react';
+import { ChatSessionContext } from '@/components/session';
 
 export default function useChat(projectDirectory: string, folders: string[] | null) {
   const [conversation, setConversation] = useState<Conversation[]>([]);
@@ -8,6 +9,8 @@ export default function useChat(projectDirectory: string, folders: string[] | nu
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [chatIndex, setChatIndex] = useState<number>(0);
+  const [timeLastRequest, setTimeLastRequest] = useState<string>(new Date().toISOString());
+  const {sessionValue, updateSession} = useContext(ChatSessionContext);
   
   useEffect(() => {
     if( folders ) initializeAgent(projectDirectory, folders);
@@ -27,15 +30,17 @@ export default function useChat(projectDirectory: string, folders: string[] | nu
     }
 
 
-    chat(formData)
+    chat(formData, sessionValue, timeLastRequest)
     .then((resp: ChatResponse) => {
       setResponseId(resp.lastResponseId);
+      setTimeLastRequest(new Date().toISOString());
 
       setConversation((prevConversation) => {
         const newConversation: Conversation = {
           request: userQuery,
           response: resp
         };
+
         setChatIndex(prevConversation.length); // +1 for new entry but -1 for 0 index.
         return [...prevConversation, newConversation];
       });
@@ -63,7 +68,13 @@ export default function useChat(projectDirectory: string, folders: string[] | nu
     .finally(() => {
       setIsLoading(false);
     });
-  }, []); 
+  }, []);
+
+  const newChat = useCallback(() => {
+    setConversation([]);
+    setResponseId(null);
+    setChatIndex(0);
+  }, []);
 
   return {
     conversation,
@@ -75,6 +86,7 @@ export default function useChat(projectDirectory: string, folders: string[] | nu
     isLoading,
     error,
     chatRequest,
-    loadChatByProjectName
+    loadChatByProjectName,
+    newChat,
   }
 }

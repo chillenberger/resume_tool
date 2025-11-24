@@ -21,3 +21,14 @@ create table if not exists chat_logs (
   updated_at timestamp default current_timestamp,
   deleted_at timestamp null
 );
+
+create table if not exists action_logs (
+  id serial primary key,
+  action_type varchar(255) not null,
+  user_id varchar(255) not null,
+  session_id varchar(255) not null,
+  details jsonb,
+  created_at timestamp default current_timestamp,
+  updated_at timestamp default current_timestamp,
+  deleted_at timestamp null
+);

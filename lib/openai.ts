@@ -1,4 +1,4 @@
-import { ChatSchema } from "../types";
+import { ChatSchema, TestChatSchema } from "../types";
 import { Agent, run, MCPServerStdio } from '@openai/agents';
 import path from "path";
 
@@ -10,22 +10,20 @@ const SYSTEM_PROMPT = `You are a professional career coach that lives inside my 
   You will review all the files available to you when we begin our conversation.  If a file changes during our conversation, review it and adjust your recommendations accordingly.
 
   - Do not sound too formal or robotic.
-  - Do not ever use em dashes.
-  - Only produce files that are markdown or html.
+  - You will never use em dashes.
+  - Only produce files that are markdown or html, never ask if I want other file types.
   - Write like a 36 year old professional software engineer applying for jobs.
 `
 
 class MyAgent {
-  private agent: Agent<unknown, typeof ChatSchema>;
+  private agent: Agent<unknown, typeof TestChatSchema>;
   private mcpServer: MCPServerStdio;
-  // private mcpReadOnlyServer: MCPServerStdio;
   projectName: string;
 
   constructor(projectName: string, folders: string[]) {
     console.log("Initializing MCP server for project:", folders);
     this.projectName = projectName;
     this.mcpServer = this.CreateServer(folders);
-    // this.mcpReadOnlyServer = this.CreateReadOnlyServer(folder);
     this.agent = this.CreateAgent(this.mcpServer);
 
     this.mcpServer.connect();
@@ -36,12 +34,12 @@ class MyAgent {
     this.mcpServer.close();
   }
 
-  private CreateAgent(mcpServer: MCPServerStdio): Agent<unknown, typeof ChatSchema> {
+  private CreateAgent(mcpServer: MCPServerStdio): Agent<unknown, typeof TestChatSchema> {
     const result =  new Agent({
       name: 'FS MCP Assistant',
       model: 'gpt-5',
       instructions: SYSTEM_PROMPT,
-      outputType: ChatSchema,
+      outputType: TestChatSchema,
       mcpServers: [mcpServer]
     });
     return result;

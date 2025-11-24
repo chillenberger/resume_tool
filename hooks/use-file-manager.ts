@@ -9,6 +9,7 @@ import { Dir, File, FileAction } from '@/types';
 import { readFileInDir, createFileInDir, deleteFileFromDir, updateFileInDir, alphabetizeDir } from '@/lib/file';
 import path from 'path';
 import { flattenDir } from '@/lib/file';
+import useLogger from '@/hooks/use-logger';
  
 
 type ActiveFile = File | null;
@@ -68,6 +69,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
   const dirIsInitialized = useRef(false);
   const [pushLockout, setPushLockout] = useState<number>(0);
   const editedFilesRef = useRef<EditedFiles>({});
+  const logger = useLogger();
 
   // On load pull current file system from cloud.
   useEffect(() => {
@@ -129,6 +131,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
     file.content = content;
     updateFileInDir(file, nextDirState);
     setDir(nextDirState);
+    logger.editedFileLog(filePath);
 
     const nextEditedFilesState = editedFilesReducer(editedFilesRef.current, {type: 'updated', path: file.path});
     // editedFilesDispatch({type: 'updated', path: file.path});
@@ -149,6 +152,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
     }
 
     setDir(nextDirState);
+    logger.createdFileLog(filePath);
 
     const nextEditedFilesState = editedFilesReducer(editedFilesRef.current, {type: 'created', path: filePath});
     // editedFilesDispatch({type: 'created', path: filePath});
@@ -161,6 +165,7 @@ function useManageFiles(folder: string | null): ManagedFileSystem {
     const nextDirState = {...dir}
     const success = deleteFileFromDir(filePath, nextDirState);
     setDir(nextDirState);
+    logger.deletedFileLog(filePath);
 
     const nextEditedFilesState = editedFilesReducer(editedFilesRef.current, {type: 'deleted', path: filePath});
     // editedFilesDispatch({type: 'deleted', path: filePath});

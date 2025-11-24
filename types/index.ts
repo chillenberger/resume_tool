@@ -34,7 +34,7 @@ export const FileSchema = z.object({
 })
 
 export const ChatSchema = z.object({
-  message: z.string().describe('The recommended travel destination.'),
+  message: z.string().describe('The is information about the response and actions taken.'),
   special_instructions: z.nullable(z.string()).describe('Any special instructions related to the response. Do not feel obligated to fill this out.'),
   file_actions: z.array(FileActionsTrackSchema).describe('The file actions that you took.'),
 });
@@ -64,5 +64,16 @@ export type Conversation = {
   request: string;
   response: ChatResponse;
 }
+
+export const ChatActions = z.object({
+  action_type: z.enum(['Edited File', 'Created File', 'Deleted File']).describe('The type of system action taken.'),
+  details: z.any().describe('Additional details about the action taken.'),
+})
+
+export const TestChatSchema = z.object({
+  message: z.string().describe('The is information about the response and actions taken.'),
+  special_instructions: z.nullable(z.string()).describe('Any special instructions related to the response. Do not feel obligated to fill this out.'),
+  system_actions: z.array(ChatActions).describe('The actions you took.'),
+});
 
 export type EditorTypes = 'markdown' | 'html';

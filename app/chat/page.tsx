@@ -1,12 +1,14 @@
 'use client'
-import { useEffect, useCallback, useState, Dispatch, SetStateAction } from 'react';
+import { useEffect, useCallback, useState, Dispatch, SetStateAction, useContext } from 'react';
 import ChatWindow from '@/components/chat';
 import {useManageFiles, useManageActiveFile, ManageActiveFile, useVirtualDirectory, ManagedFileSystem} from '@/hooks/use-file-manager';
+import useLogger from '@/hooks/use-logger';
 import PineconeDelicate from '@/components/pinecone-art';
 import UriForm from '@/components/forms/uri-form';
 import FileTree from '@/components/file-tree';
 import { getContentTypeFromPath } from '@/lib/file';
 import path from 'path';
+import { ChatSessionContext } from '@/components/session';
 import { 
   exportHtmlToPdf
 } from '@/services/file-service';
@@ -155,22 +157,31 @@ export default function ChatPage() {
 
 function AddDirectory({path, setDirs, onSwitchActiveFile, onDeleteFile, onCreateFile, handleRemoveDir}: {path: string, setDirs: Dispatch<SetStateAction<ManagedFileSystem[]>>, onSwitchActiveFile: (path: string) => void, onDeleteFile: (path: string) => void, onCreateFile: (path: string) => void, handleRemoveDir: (path: string) => void} ) {
   const dir = useManageFiles(path);
+  const logger = useLogger();
 
   useEffect(() => {
+    let exists = false;
     setDirs(prev => {
       const index = prev.findIndex(d => d.dir.title === dir.dir.title);
-      if ( index !== -1 ) {
-        prev.splice(index, 1);
-      }
+      if ( index !== -1 ) exists = true;
+      if ( index !== -1 ) prev.splice(index, 1); // replace if exists
       return [...prev, dir];
     });
+    if ( !exists ) logger.addedDirLog(path);
   }, [dir.dir])
+
+  useEffect(() => {
+    return () => {
+      logger.removedDirLog(path);
+      setDirs(prev => prev.filter(d => d.dir.title !== dir.dir.title) );
+    }
+  }, [])
 
   return <FileTree dir={dir.dir} onFileChange={(path) => onSwitchActiveFile(path)} onFileCreate={(path) => onCreateFile(path)} onFileDelete={(path) => onDeleteFile(path)} onRemoveDir={() => handleRemoveDir(path)} />; 
 }
 
 function WindowFrame(props: {children: React.ReactNode, className?: string}) {
   return (
-    <div className={`w-full h-full border-2 border-stone-600 rounded-lg p-2 ${props.className || ''}`}>{props.children}</div>
+    <div className={`${props.className || ''} w-full h-full border-1 border-stone-600 p-2 m-1`}>{props.children}</div>
   )
 }
