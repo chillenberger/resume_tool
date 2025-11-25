@@ -12,52 +12,40 @@ function initializeAgent(projectName: string, folders: string[]) {
   myAgentInstance = myAgent;
 }
 
-async function chat(formData: FormData, chatSession: string, timeLastRequest: string): Promise<ChatResponse> {
+async function chatStream(formData: FormData){
   const userQuery = formData.get('userQuery') as string;
   const previousResponseId = formData.get('previousResponseId') as string | null;
+  const folders = JSON.parse(formData.get('folders') as string) as string[];
+  const chatSessionFromForm = formData.get('chatSession') as string;
+  const timeLastRequestFromForm = formData.get('timeLastRequest') as string;
 
-  if (!myAgentInstance) throw new Error("Agent not initialized");
+  const myAgent = new MyAgent("test stream", folders);
+  myAgentInstance = myAgent;
 
-  const testActionDBCall = await getActionLogsBySessionAndCreatedAt(chatSession, new Date(timeLastRequest));
-  console.log("Test action DB call result:", testActionDBCall);
-  const userActions = testActionDBCall.map(actionLog => ({
+  const userActionsFromDB = await getActionLogsBySessionAndCreatedAt(chatSessionFromForm, new Date(timeLastRequestFromForm));
+
+  const userActions = userActionsFromDB.map(actionLog => ({
     action_type: actionLog.action_type,
     details: actionLog.details,
   }));
 
-  const query = JSON.stringify({"userQuery": userQuery, "systemActions": userActions});
+  const query = JSON.stringify({"userQuery": userQuery});
 
-  console.log("Constructed agent query:", query);
+  console.log("Constructed agent query for stream:", query);
 
-  const response = await myAgentInstance.run(query, previousResponseId);
-  if( !response?.finalOutput ) {
-    throw new Error("No response from agent");
+  const responseStream = await myAgentInstance.runStream(query, previousResponseId);
+
+  if( !responseStream ) {
+    throw new Error("No response stream from agent");
   }
-
-  console.log("Agent response:", response);
-
-  const chatLogEntry = {
-    user_id: "user-123",
-    project_id: myAgentInstance.projectName,
-    response_id: response.lastResponseId || '',
-    previous_response_id: previousResponseId,
-    request_text: JSON.stringify(query),
-    response_text: JSON.stringify(response.finalOutput),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    deleted_at: null,
-  }
-
-  await createChatLog(chatLogEntry);
-  return {
-    response: response.finalOutput,
-    lastResponseId: response.lastResponseId || '',
-    error: false,
-  }
-
-//   await new Promise(resolve => setTimeout(resolve, 1000));
-//   return testResponse;
+  // responseStream is a ReadableStream<Uint8Array>; wrap it in a Response for streaming to client.
+  return new Response(responseStream, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8'
+    }
+  });
 }
+
 
 async function getChatLog(projectName: string): Promise<Conversation[]> {
   const chatLogs: ChatLog[] = await getChatLogsByProject(projectName);
@@ -75,7 +63,7 @@ async function getChatLog(projectName: string): Promise<Conversation[]> {
   }));
 }
 
-export {chat, getChatLog, initializeAgent};
+export {getChatLog, initializeAgent, chatStream};
 
 const testResponse = {
   response: {

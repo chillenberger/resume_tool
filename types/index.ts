@@ -48,7 +48,7 @@ export interface ChatLog {
 }
 
 export type ChatResponse = {
-  response: ChatExchange;
+  response: string;
   lastResponseId: string;
   error: boolean;
 }

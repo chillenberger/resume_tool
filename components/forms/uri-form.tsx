@@ -30,7 +30,7 @@ export default function UriForm ({handleAddDir}: {handleAddDir: (path: string) =
 
   return (
     <div className="flex flex-row py-2 gap-2 items-center">
-      <form ref={formRef} onSubmit={handleNewPath} className="flex flex-row gap-2 rounded-md">
+      <form ref={formRef} onSubmit={handleNewPath} className="flex flex-row gap-2 rounded-md flex-grow">
         <button type="submit" className="text-white rounded-md transition">
           <FontAwesomeIcon icon={faAdd} className="m-auto"/>
         </button>
@@ -38,7 +38,7 @@ export default function UriForm ({handleAddDir}: {handleAddDir: (path: string) =
           type="text"
           name={`filePath`}
           placeholder="Add Directory"
-          className="file-input bg-transparent border-0 flex-1"
+          className="file-input bg-transparent border-0 flex-grow"
         />
       </form>
     </div>
